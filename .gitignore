@@ -52,3 +52,4 @@ next-env.d.ts
 # isolated test build
 /.next-test/
 /.next-live/
+/.next-v*/

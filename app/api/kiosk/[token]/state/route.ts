@@ -15,8 +15,8 @@ export const GET = route(async (_req: Request, ctx: { params: Promise<{ token: s
   const [pages, answers, alerts] = await Promise.all([
     d.query<Pick<Source, 'id' | 'label' | 'status' | 'readability' | 'identity' | 'error' | 'seq'>>(
       `select id, label, status, readability, identity, error, seq from sources where encounter_id = $1 and kind = 'page' order by seq`, [enc.id]),
-    d.query<Pick<Source, 'id' | 'label' | 'kind' | 'typed_text' | 'transcript_hi' | 'supersedes_id' | 'created_at'>>(
-      `select id, label, kind, typed_text, transcript_hi, supersedes_id, created_at from sources where encounter_id = $1 and kind in ('typed','clip') order by seq`, [enc.id]),
+    d.query<Pick<Source, 'id' | 'label' | 'kind' | 'status' | 'typed_text' | 'transcript_hi' | 'supersedes_id' | 'created_at'>>(
+      `select id, label, kind, status, typed_text, transcript_hi, supersedes_id, created_at from sources where encounter_id = $1 and kind in ('typed','clip') order by seq`, [enc.id]),
     d.query<Alert>('select * from alerts where encounter_id = $1 and resumed_at is null', [enc.id]),
   ]);
   const a = alerts[0];
@@ -26,7 +26,7 @@ export const GET = route(async (_req: Request, ctx: { params: Promise<{ token: s
       intake_started: !!enc.intake_started_at, intake_completed: !!enc.intake_completed_at,
     },
     pages,
-    answers: answers.map((x) => ({ id: x.id, label: x.label, kind: x.kind, text: x.typed_text ?? x.transcript_hi, supersedes_id: x.supersedes_id, created_at: x.created_at })),
+    answers: answers.map((x) => ({ id: x.id, label: x.label, kind: x.kind, status: x.status, text: x.typed_text ?? x.transcript_hi, supersedes_id: x.supersedes_id, created_at: x.created_at })),
     open_alert: a ? { id: a.id, requested_at: a.requested_at, delivered: !!a.delivered_at, acked: !!a.acked_at, acked_by: a.acked_by } : null,
     server_time: new Date().toISOString(),
   });

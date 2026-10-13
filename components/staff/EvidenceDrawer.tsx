@@ -50,7 +50,7 @@ export default function EvidenceDrawer({ sourceId, factId, onClose, returnFocus 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-ink/20" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Source evidence"
-        className="flex h-full w-full max-w-[560px] flex-col border-l border-line bg-surface shadow-xl outline-none">
+        className="flex h-full w-full max-w-[560px] flex-col border-l border-line/70 bg-surface shadow-lift outline-none">
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
           <div>
             <div className="text-[18px] font-semibold">Source {ev?.source.label ?? ''}</div>
@@ -97,13 +97,18 @@ export default function EvidenceDrawer({ sourceId, factId, onClose, returnFocus 
                   <audio controls preload="metadata" src={ev.source.file_url} className="mb-2 w-full" data-testid="clip-audio" onPlay={(e) => document.querySelectorAll('audio').forEach((a) => { if (a !== e.currentTarget) a.pause(); })} />
                 )}
                 <div className="mb-1 text-[13px] font-medium text-ink-2">{ev.source.kind === 'typed' ? 'Typed by the patient (verbatim)' : 'Transcript (original language, local Whisper)'}</div>
-                <p className="deva text-[18px] leading-relaxed" lang="hi">{ev.source.typed_text ?? ev.source.transcript_hi}</p>
+                <p className="deva text-[18px] leading-relaxed" lang="hi">{ev.source.typed_text ?? ev.source.transcript_hi ?? (ev.source.kind === 'clip' ? 'Transcript unavailable' : '')}</p>
                 {ev.source.transcript_en && <p className="mt-2 text-[15px] text-ink-2">{ev.source.transcript_en} <span className="text-[12px]">({ev.source.translation_by === 'sarvam' ? 'Sarvam translation' : ev.source.translation_by === 'whisper' ? 'Whisper translation (local), may be inexact' : 'AI translation'})</span></p>}
               </div>
               {ev.history.length > 0 && (
                 <div className="rounded border border-line p-3">
                   <div className="mb-1 text-[13px] font-medium text-ink-2">Earlier version{ev.history.length > 1 ? 's' : ''} (kept for the record)</div>
-                  {ev.history.map((h) => <p key={h.id} className="deva text-[15px] text-ink-2 line-through decoration-ink-2/40" lang="hi">{h.typed_text ?? h.transcript_hi} <span className="no-underline">[{h.label} · {timeHM(h.created_at)}]</span></p>)}
+                  {ev.history.map((h) => (
+                    <div key={h.id} className="mb-2">
+                      <p className="deva text-[15px] text-ink-2 line-through decoration-ink-2/40" lang="hi">{h.typed_text ?? h.transcript_hi ?? (h.kind === 'clip' ? 'Transcript unavailable' : '')} <span className="no-underline">[{h.label} · {timeHM(h.created_at)}]</span></p>
+                      {h.kind === 'clip' && <audio controls preload="none" src={`/api/sources/${h.id}/file`} className="mt-1 w-full" data-testid="history-audio" />}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

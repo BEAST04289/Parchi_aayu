@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { api, ApiError, timeHM } from '@/lib/client';
 import BriefView from './BriefView';
+import { Brand } from './ui';
 import EvidenceDrawer from './EvidenceDrawer';
 import type { Encounter, StaffAlert, StaffRole } from '@/lib/types';
 
@@ -24,8 +25,8 @@ function Login({ onDone, demoPasscode }: { onDone: () => void; demoPasscode: str
   const [role, setRole] = useState<StaffRole>('doctor');
   const [err, setErr] = useState<string | null>(null);
   return (
-    <main className="mx-auto mt-16 max-w-[420px] rounded-[10px] border border-line bg-surface p-6">
-      <div className="text-[22px] font-semibold"><span className="text-teal">parchi</span> · Staff workspace</div>
+    <main className="mx-auto mt-16 max-w-[440px] rounded-2xl border border-line/70 bg-surface p-7 shadow-lift">
+      <Brand suffix="Staff workspace" size="lg" />
       <p className="mt-1 text-[14px] text-ink-2">Synthetic demo. No real patient data.</p>
       {demoPasscode && (
         <div className="mt-3 rounded-md border border-teal bg-teal-soft p-3 text-[14px]" data-testid="demo-passcode">
@@ -77,9 +78,9 @@ function Workspace({ me, onLogout }: { me: Me; onLogout: () => void }) {
   return (
     <div className="flex min-h-screen flex-col">
       <AlertBar onOpenEncounter={(id) => setSel(id)} />
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line bg-surface px-4 py-2">
-        <div className="text-[18px] font-semibold"><span className="text-teal">parchi</span> <span className="font-normal text-ink-2">Staff workspace</span></div>
-        {me.system.db === 'local' && <span className="rounded bg-amber-soft px-2 py-0.5 text-[13px] font-semibold text-amber" data-testid="local-db">LOCAL DEV DATABASE</span>}
+      <header className="sticky top-0 z-30 flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line/70 bg-surface/95 px-4 py-2.5 shadow-card backdrop-blur">
+        <Brand suffix="Staff workspace" />
+        {me.system.db === 'local' && <span className="rounded-full bg-amber-soft px-2.5 py-0.5 text-[12px] font-semibold tracking-wide text-amber ring-1 ring-amber/20" data-testid="local-db">LOCAL DEV DATABASE</span>}
         <span className="text-[13px] text-ink-2" data-testid="providers" title="Status when this page loaded">
           OCR: {p.ocr.provider}{ocrLocal ? (me.system.ml_ok ? ' ✓' : ' · not running') : p.ocr.configured ? ' ✓' : ' · not configured'} · Extraction: {p.extraction.provider}{p.extraction.provider.includes('Ollama') ? (me.system.ollama_ok ? ' ✓' : ' · not running') : p.extraction.configured ? ' ✓' : ' · not configured'}
         </span>
@@ -87,27 +88,27 @@ function Workspace({ me, onLogout }: { me: Me; onLogout: () => void }) {
           <div className="flex items-center gap-1 text-[13px]" aria-label="Processing mode for new uploads">
             {(['live', 'replay'] as const).map((m) => (
               <button key={m} onClick={async () => { try { await api(`/api/encounters/${sel}/mode`, { method: 'POST', json: { mode: m } }); await loadEncs(); } catch (e) { alert((e as Error).message); } }}
-                className={clsx('rounded px-2 py-0.5 font-semibold', mode === m ? (m === 'live' ? 'bg-teal text-white' : 'bg-amber text-white') : 'border border-line text-ink-2')}>
+                className={clsx('rounded-full px-2.5 py-0.5 text-[12px] font-semibold tracking-wide', mode === m ? (m === 'live' ? 'bg-teal text-white shadow-card' : 'bg-amber text-white shadow-card') : 'border border-line text-ink-2 hover:bg-page')}>
                 {m === 'live' ? 'LIVE' : 'FIXTURE REPLAY'}
               </button>
             ))}
           </div>
         )}
         <div className="ml-auto flex items-center gap-2 text-[14px]">
-          <span className="rounded bg-page px-2 py-0.5" title="Demo role chosen at sign-in">Demo role: {me.role === 'doctor' ? 'Doctor' : 'Nurse'}</span>
+          <span className="rounded-full bg-page px-2.5 py-0.5 ring-1 ring-line" title="Demo role chosen at sign-in">Demo role: {me.role === 'doctor' ? 'Doctor' : 'Nurse'}</span>
           <span>{me.actor}</span>
-          <button onClick={onLogout} className="rounded border border-line px-2 py-0.5 hover:bg-page">Sign out</button>
+          <button onClick={onLogout} className="rounded-full border border-line px-3 py-1 hover:bg-page">Sign out</button>
         </div>
       </header>
       <div className="flex flex-1">
-        <aside className="w-[208px] shrink-0 border-r border-line bg-surface p-3">
-          <button onClick={() => setCreating(true)} className="mb-3 w-full rounded-md bg-teal px-3 py-2 text-[14px] font-medium text-white">+ Create encounter</button>
-          <a href="/demo" className="mb-3 block w-full rounded-md border border-teal px-3 py-2 text-center text-[14px] font-medium text-teal hover:bg-teal-soft" data-testid="open-demo">View demo patient (read-only)</a>
-          <div className="mb-2 text-[12px] font-semibold text-ink-2">Synthetic demo encounters</div>
+        <aside className="w-[216px] shrink-0 border-r border-line/70 bg-surface p-3">
+          <button onClick={() => setCreating(true)} className="mb-2 w-full rounded-lg bg-teal px-3 py-2.5 text-[14px] font-semibold text-white shadow-card hover:shadow-lift">+ Create encounter</button>
+          <a href="/demo" className="mb-4 block w-full rounded-lg border border-teal/40 bg-teal-soft/50 px-3 py-2 text-center text-[14px] font-medium text-teal hover:border-teal hover:bg-teal-soft" data-testid="open-demo">View demo patient (read-only)</a>
+          <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-2">Synthetic demo encounters</div>
           <ul className="grid gap-1">
             {encs.map((e) => (
               <li key={e.id}>
-                <button onClick={() => { setSel(e.id); setCreating(false); }} className={clsx('w-full rounded-md px-2 py-1.5 text-left', sel === e.id ? 'bg-teal-soft' : 'hover:bg-page')} data-testid={`enc-${e.alias}`}>
+                <button onClick={() => { setSel(e.id); setCreating(false); }} className={clsx('w-full rounded-lg border-l-[3px] px-2.5 py-1.5 text-left', sel === e.id ? 'border-teal bg-teal-soft' : 'border-transparent hover:bg-page')} data-testid={`enc-${e.alias}`}>
                   <div className="flex items-center justify-between text-[14px] font-semibold"><span>{e.alias}</span>{e.open_alert && <span className="rounded bg-red px-1.5 text-[11px] text-white">HELP</span>}</div>
                   <div className="text-[13px] text-ink-2">{e.patient_name}{e.patient_age !== null ? `, ${e.patient_age}` : ''} · {e.status === 'ready' ? 'ready' : e.status === 'paused_urgent' ? 'paused' : 'intake'}</div>
                 </button>

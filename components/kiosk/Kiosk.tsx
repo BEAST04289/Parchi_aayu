@@ -8,7 +8,7 @@ type Step = 'start' | 'tell' | 'papers' | 'questions' | 'check' | 'done';
 interface KState {
   encounter: { alias: string; patient_name: string; language: Lang; status: 'intake' | 'paused_urgent' | 'ready'; intake_started: boolean; intake_completed: boolean };
   pages: { id: string; label: string; status: string; readability: string; identity: string; error: string | null; seq: number }[];
-  answers: { id: string; label: string; kind: string; text: string | null; supersedes_id: string | null; created_at: string }[];
+  answers: { id: string; label: string; kind: string; status: string; text: string | null; supersedes_id: string | null; created_at: string }[];
   open_alert: { id: string; requested_at: string; delivered: boolean; acked: boolean; acked_by: string | null } | null;
   server_time: string;
 }
@@ -19,7 +19,24 @@ const T = {
   consent: { hi: 'आपकी बातें और पर्चे डॉक्टर से मिलने से पहले क्लिनिक स्टाफ को दिखाए जाएँगे।', en: 'What you tell us and your papers will be shown to the clinic staff before you see the doctor.' },
   begin: { hi: 'शुरू करें', en: 'Start' },
   ask: { hi: 'आज आपको क्या परेशानी है?', en: 'What problem brings you here today?' },
-  askSub: { hi: 'लिखकर बताइए। (आवाज़ से बताने की सुविधा अभी जोड़ी जा रही है।)', en: 'Type your answer. (Speaking is being added.)' },
+  askSub: { hi: 'लिखकर बताइए, या माइक दबाकर बोलिए।', en: 'Type your answer, or press the mic and speak.' },
+  orSpeak: { hi: 'या बोलकर बताइए', en: 'Or say it' },
+  recStart: { hi: '🎤 बोलना शुरू करें', en: '🎤 Start recording' },
+  recStop: { hi: '■ रोकें', en: '■ Stop' },
+  recCancel: { hi: 'रद्द करें', en: 'Cancel' },
+  recSend: { hi: 'यह रिकॉर्डिंग भेजें', en: 'Send this recording' },
+  recAgain: { hi: 'फिर से बोलें', en: 'Record again' },
+  recording: { hi: 'रिकॉर्ड हो रहा है…', en: 'Recording…' },
+  recListen: { hi: 'भेजने से पहले सुन लें:', en: 'Listen before sending:' },
+  recSending: { hi: 'भेजा जा रहा है, लिखा जा रहा है…', en: 'Sending and transcribing…' },
+  said: { hi: 'आपने कहा (रिकॉर्डिंग से लिखा गया):', en: 'You said (transcribed from your recording):' },
+  transcribing: { hi: 'आपकी रिकॉर्डिंग लिखी जा रही है… कृपया रुकें।', en: 'Transcribing your recording… please wait.' },
+  noTranscript: { hi: 'लिखित रूप नहीं बन पाया। आपकी रिकॉर्डिंग स्टाफ के लिए सहेजी गई है। कृपया फिर से बोलें या लिखकर बताएं।', en: 'Transcript unavailable. Your recording is saved for staff. Please record again or type your answer.' },
+  typeInstead: { hi: 'लिखकर बताएं', en: 'Type instead' },
+  micDenied: { hi: 'माइक की अनुमति नहीं मिली। कृपया लिखकर बताएं।', en: 'Microphone permission was denied. Please type your answer.' },
+  micMissing: { hi: 'माइक नहीं मिला। कृपया लिखकर बताएं।', en: 'No microphone found. Please type your answer.' },
+  micUnsupported: { hi: 'इस डिवाइस पर रिकॉर्डिंग नहीं हो सकती। कृपया लिखकर बताएं।', en: 'Recording is not supported on this device. Please type your answer.' },
+  micFailed: { hi: 'रिकॉर्डिंग शुरू नहीं हो पाई। कृपया लिखकर बताएं।', en: 'Recording could not start. Please type your answer.' },
   placeholder: { hi: 'अपनी बात यहाँ लिखें…', en: 'Write here…' },
   send: { hi: 'भेजें', en: 'Send' },
   readback: { hi: 'आपने लिखा:', en: 'You wrote:' },
@@ -120,7 +137,7 @@ export default function Kiosk({ token }: { token: string }) {
     <div className={clsx('min-h-screen pb-28', lang === 'hi' && 'deva')} lang={lang}>
       <header className="sticky top-0 z-20 border-b border-line bg-surface/95 px-4 py-2 backdrop-blur">
         <div className="mx-auto flex max-w-[680px] items-center gap-2">
-          <span className="text-[20px] font-semibold text-teal">parchi</span>
+          <span aria-hidden className="deva grid h-8 w-8 place-items-center rounded-lg bg-ink text-[17px] font-bold text-white shadow-card">प</span><span className="text-[20px] font-bold tracking-tight text-ink">parchi</span>
           <span className="text-[15px] text-ink-2">{st.encounter.alias}</span>
           <div className="ml-auto flex rounded-[12px] border border-line text-[15px]">
             <button onClick={() => setLang('hi')} className={clsx('px-3 py-1.5 deva', lang === 'hi' && 'rounded-[12px] bg-teal text-white')} aria-pressed={lang === 'hi'}>हिंदी</button>
@@ -204,6 +221,8 @@ function Tell({ t, base, answers, onNext, refresh }: { t: (k: keyof typeof T) =>
   const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [rerecord, setRerecord] = useState<string | null>(null);
+  const [voiceErr, setVoiceErr] = useState<string | null>(null);
   const area = useRef<HTMLTextAreaElement>(null);
   const submit = async () => {
     if (!text.trim()) return;
@@ -214,16 +233,41 @@ function Tell({ t, base, answers, onNext, refresh }: { t: (k: keyof typeof T) =>
     } catch (e) { setErr((e as Error).message); }
     setBusy(false);
   };
+  const afterVoice = async (r: { error: string | null }) => { setRerecord(null); setVoiceErr(r.error); await refresh(); };
+  if (rerecord) {
+    return (
+      <section className="grid gap-3">
+        <h1 className="text-[28px] font-semibold">{t('recAgain')}</h1>
+        <VoiceAnswer t={t} base={base} supersedesId={rerecord} onSent={afterVoice} autoStart />
+        <button onClick={() => setRerecord(null)} className="min-h-[48px] rounded-[12px] border-2 border-line bg-surface text-[18px]">{t('recCancel')}</button>
+      </section>
+    );
+  }
   if (last && editing === null && !text) {
+    const clip = last.kind === 'clip';
     return (
       <section className="grid gap-3" data-testid="readback">
-        <h1 className="text-[28px] font-semibold">{t('readback')}</h1>
-        <p className="rounded-[12px] border border-line bg-surface p-4 text-[22px]" data-testid="readback-text">{last.text}</p>
+        <h1 className="text-[28px] font-semibold">{clip ? t('said') : t('readback')}</h1>
+        {clip && last.status === 'processing' ? (
+          <p className="flex items-center gap-2 rounded-[12px] border border-line bg-surface p-4 text-[19px] text-ink-2" role="status" data-testid="transcribing"><span aria-hidden className="h-3 w-3 animate-pulse rounded-full bg-teal" />{t('transcribing')}</p>
+        ) : clip && !last.text ? (
+          <p className="rounded-[12px] border border-amber/40 bg-amber-soft p-4 text-[19px] text-amber" role="alert" data-testid="no-transcript">{voiceErr ? `${voiceErr} ` : ''}{t('noTranscript')}</p>
+        ) : (
+          <p className="rounded-[12px] border border-line bg-surface p-4 text-[22px] shadow-card" data-testid="readback-text">{last.text}</p>
+        )}
         <BottomBar>
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => { setEditing(last.id); setText(last.text ?? ''); setTimeout(() => area.current?.focus(), 0); }} className="min-h-[56px] rounded-[12px] border-2 border-line bg-surface text-[20px]">{t('edit')}</button>
-            <button onClick={onNext} className="min-h-[56px] rounded-[12px] bg-teal text-[20px] font-semibold text-white">{t('ok')}</button>
-          </div>
+          {clip && last.status === 'processing' ? null : clip && !last.text ? (
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => { setEditing(last.id); setText(''); setTimeout(() => area.current?.focus(), 0); }} className="min-h-[56px] rounded-[12px] border-2 border-line bg-surface text-[20px]">{t('typeInstead')}</button>
+              <button onClick={() => setRerecord(last.id)} className="min-h-[56px] rounded-[12px] bg-teal text-[20px] font-semibold text-white" data-testid="rerecord">{t('recAgain')}</button>
+            </div>
+          ) : (
+            <div className={clsx('grid gap-3', clip ? 'grid-cols-3' : 'grid-cols-2')}>
+              <button onClick={() => { setEditing(last.id); setText(last.text ?? ''); setTimeout(() => area.current?.focus(), 0); }} className="min-h-[56px] rounded-[12px] border-2 border-line bg-surface text-[20px]">{t('edit')}</button>
+              {clip && <button onClick={() => setRerecord(last.id)} className="min-h-[56px] rounded-[12px] border-2 border-line bg-surface text-[18px]" data-testid="rerecord">{t('recAgain')}</button>}
+              <button onClick={onNext} className="min-h-[56px] rounded-[12px] bg-teal text-[20px] font-semibold text-white">{t('ok')}</button>
+            </div>
+          )}
         </BottomBar>
       </section>
     );
@@ -236,10 +280,135 @@ function Tell({ t, base, answers, onNext, refresh }: { t: (k: keyof typeof T) =>
       <textarea id="answer" ref={area} value={text} onChange={(e) => setText(e.target.value)} rows={4} placeholder={t('placeholder')}
         className="w-full rounded-[12px] border-2 border-line bg-surface p-3 text-[20px]" data-testid="answer-input" />
       {err && <p className="rounded-[12px] bg-red-soft p-3 text-red" role="alert">{err}</p>}
+      {!editing && (
+        <div className="grid gap-2 rounded-[12px] border border-line bg-surface p-3 shadow-card">
+          <div className="text-[15px] font-medium text-ink-2">{t('orSpeak')}</div>
+          <VoiceAnswer t={t} base={base} supersedesId={null} onSent={afterVoice} />
+        </div>
+      )}
       <BottomBar>
         <button onClick={submit} disabled={busy || !text.trim()} className="min-h-[56px] w-full rounded-[12px] bg-teal text-[22px] font-semibold text-white disabled:opacity-50" data-testid="answer-send">{editing ? t('save') : t('send')}</button>
       </BottomBar>
     </section>
+  );
+}
+
+const MAX_REC_MS = 25_000;
+function pickMime(): string | null {
+  if (typeof window === 'undefined' || typeof MediaRecorder === 'undefined') return null;
+  for (const m of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus']) if (MediaRecorder.isTypeSupported(m)) return m;
+  return null;
+}
+
+/**
+ * One short spoken answer: Record -> Stop (auto-stop at 25 s) -> listen -> Send, or Cancel. The clip goes
+ * to the kiosk's own token-scoped answers route; the server stores it and transcribes it locally (Whisper).
+ * Microphone tracks are stopped on stop, cancel and unmount. Typing stays available beside it.
+ */
+function VoiceAnswer({ t, base, supersedesId, onSent, autoStart = false }: { t: (k: keyof typeof T) => string; base: string; supersedesId: string | null; onSent: (r: { error: string | null }) => void; autoStart?: boolean }) {
+  const [st, setSt] = useState<'idle' | 'recording' | 'recorded' | 'sending'>('idle');
+  const [err, setErr] = useState<string | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const [clip, setClip] = useState<{ blob: Blob; url: string; ms: number } | null>(null);
+  const rec = useRef<MediaRecorder | null>(null);
+  const stream = useRef<MediaStream | null>(null);
+  const chunks = useRef<Blob[]>([]);
+  const started = useRef(0);
+  const timer = useRef<number | null>(null);
+  const discard = useRef(false);
+
+  const stopTracks = () => {
+    stream.current?.getTracks().forEach((tr) => tr.stop());
+    stream.current = null;
+    if (timer.current !== null) { window.clearInterval(timer.current); timer.current = null; }
+  };
+  const stop = () => { if (rec.current && rec.current.state === 'recording') rec.current.stop(); };
+  const start = async () => {
+    setErr(null);
+    const mime = pickMime();
+    if (!navigator.mediaDevices?.getUserMedia || !mime) { setErr(t('micUnsupported')); return; }
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.current = s; chunks.current = []; discard.current = false;
+      const r = new MediaRecorder(s, { mimeType: mime });
+      r.ondataavailable = (e) => { if (e.data.size) chunks.current.push(e.data); };
+      r.onstop = () => {
+        const ms = Date.now() - started.current;
+        stopTracks();
+        if (discard.current || chunks.current.length === 0) { setSt('idle'); return; }
+        const blob = new Blob(chunks.current, { type: mime });
+        setClip({ blob, url: URL.createObjectURL(blob), ms });
+        setSt('recorded');
+      };
+      rec.current = r;
+      started.current = Date.now();
+      setElapsed(0);
+      r.start();
+      setSt('recording');
+      timer.current = window.setInterval(() => {
+        const e = Date.now() - started.current;
+        setElapsed(e);
+        if (e >= MAX_REC_MS) stop();
+      }, 250);
+    } catch (e) {
+      stopTracks();
+      const name = (e as Error).name;
+      setErr(name === 'NotAllowedError' || name === 'SecurityError' ? t('micDenied') : name === 'NotFoundError' ? t('micMissing') : t('micFailed'));
+      setSt('idle');
+    }
+  };
+  const cancel = () => { discard.current = true; stop(); stopTracks(); setClip(null); setSt('idle'); };
+  const send = async () => {
+    if (!clip || st === 'sending') return;
+    setSt('sending'); setErr(null);
+    const type = clip.blob.type.split(';')[0];
+    const fd = new FormData();
+    fd.append('audio', new File([clip.blob], `answer.${type.includes('mp4') ? 'm4a' : type.includes('ogg') ? 'ogg' : 'webm'}`, { type: clip.blob.type }));
+    fd.append('duration_ms', String(clip.ms));
+    if (supersedesId) fd.append('supersedes_id', supersedesId);
+    try {
+      const r = await api<{ error: string | null }>(`${base}/answers`, { method: 'POST', body: fd });
+      setClip(null); setSt('idle');
+      onSent({ error: r.error ?? null });
+    } catch (e) {
+      setErr((e as Error).message);
+      setSt('recorded');
+    }
+  };
+  // Release the microphone and the playback URL whenever this control goes away.
+  useEffect(() => () => { discard.current = true; if (rec.current && rec.current.state === 'recording') rec.current.stop(); stopTracks(); }, []);
+  useEffect(() => () => { if (clip) URL.revokeObjectURL(clip.url); }, [clip]);
+  const auto = useRef(autoStart);
+  useEffect(() => { if (auto.current) { auto.current = false; void start(); } });
+
+  return (
+    <div className="grid gap-2" data-testid="voice">
+      {st === 'idle' && (
+        <button onClick={start} className="min-h-[56px] rounded-[12px] border-2 border-teal bg-teal-soft text-[20px] font-semibold text-teal" data-testid="rec-start">{t('recStart')}</button>
+      )}
+      {st === 'recording' && (
+        <div className="grid gap-2">
+          <div className="flex items-center gap-2 text-[18px] font-medium text-red" role="status" aria-live="polite">
+            <span aria-hidden className="h-3 w-3 animate-pulse rounded-full bg-red" />{t('recording')} {Math.floor(elapsed / 1000)} / {MAX_REC_MS / 1000} s
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={cancel} className="min-h-[56px] rounded-[12px] border-2 border-line bg-surface text-[18px]">{t('recCancel')}</button>
+            <button onClick={stop} className="min-h-[56px] rounded-[12px] bg-red text-[20px] font-semibold text-white" data-testid="rec-stop">{t('recStop')}</button>
+          </div>
+        </div>
+      )}
+      {(st === 'recorded' || st === 'sending') && clip && (
+        <div className="grid gap-2">
+          <div className="text-[15px] text-ink-2">{t('recListen')}</div>
+          <audio controls src={clip.url} className="w-full" data-testid="rec-playback" />
+          <div className="grid grid-cols-2 gap-3">
+            <button disabled={st === 'sending'} onClick={cancel} className="min-h-[56px] rounded-[12px] border-2 border-line bg-surface text-[18px] disabled:opacity-50">{t('recCancel')}</button>
+            <button disabled={st === 'sending'} onClick={send} className="min-h-[56px] rounded-[12px] bg-teal text-[18px] font-semibold text-white disabled:opacity-60" data-testid="rec-send">{st === 'sending' ? t('recSending') : t('recSend')}</button>
+          </div>
+        </div>
+      )}
+      {err && <p className="rounded-[12px] bg-red-soft p-3 text-[16px] text-red" role="alert" data-testid="rec-error">{err}</p>}
+    </div>
   );
 }
 

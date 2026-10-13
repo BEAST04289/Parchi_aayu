@@ -3,14 +3,25 @@ import clsx from 'clsx';
 import type { CheckState, FieldRef, SectionState, SourceRef } from '@/lib/types';
 import { timeHM } from '@/lib/client';
 
-export type OpenSource = (sourceId: string, factId?: string | null, trigger?: HTMLElement | null) => void;
+/** Brand lockup: navy tile with प (parchi) and the wordmark. Decorative; the text carries the name. */
+export function Brand({ suffix, size = 'md' }: { suffix?: string; size?: 'md' | 'lg' }) {
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span aria-hidden className={clsx('deva grid place-items-center rounded-lg bg-ink font-bold text-white shadow-card', size === 'lg' ? 'h-9 w-9 text-[20px]' : 'h-7 w-7 text-[16px]')}>प</span>
+      <span className={clsx('font-bold tracking-tight text-ink', size === 'lg' ? 'text-[22px]' : 'text-[18px]')}>parchi</span>
+      {suffix && <span className={clsx('font-normal text-ink-2', size === 'lg' ? 'text-[18px]' : 'text-[15px]')}>{suffix}</span>}
+    </span>
+  );
+}
+
+export type OpenSource =(sourceId: string, factId?: string | null, trigger?: HTMLElement | null) => void;
 
 export function SourceChip({ r, onOpen, factId }: { r: Pick<SourceRef, 'source_id' | 'label'>; onOpen: OpenSource; factId?: string | null }) {
   return (
     <button
       type="button"
       onClick={(e) => onOpen(r.source_id, factId ?? null, e.currentTarget)}
-      className="inline-flex items-center rounded-md border border-line bg-surface px-1.5 py-0.5 text-[13px] font-semibold text-teal hover:bg-teal-soft"
+      className="inline-flex items-center rounded-full border border-teal/25 bg-teal-soft/70 px-2 py-0.5 text-[12.5px] font-semibold text-teal hover:border-teal hover:bg-teal hover:text-white"
       aria-label={`Open source ${r.label}`}
     >
       [{r.label}]
@@ -27,10 +38,10 @@ const CHECK_TEXT: Record<CheckState, string> = {
 };
 
 export function CheckTag({ c }: { c: CheckState | 'mixed' | 'verbatim' }) {
-  if (c === 'verbatim') return <span className="rounded px-1.5 py-0.5 text-[12px] font-medium text-ink-2 bg-page">patient&apos;s own words</span>;
+  if (c === 'verbatim') return <span className="rounded-full bg-page px-2 py-0.5 text-[12px] font-medium text-ink-2 ring-1 ring-line">patient&apos;s own words</span>;
   if (c === 'mixed') return null;
   return (
-    <span className={clsx('rounded px-1.5 py-0.5 text-[12px] font-medium',
+    <span className={clsx('rounded-full px-2 py-0.5 text-[12px] font-medium',
       c === 'pending_check' || c === 'unreadable' ? 'bg-amber-soft text-amber' : c === 'source_matched' ? 'bg-page text-ink-2' : 'bg-teal-soft text-teal')}>
       {c === 'nurse_confirmed' || c === 'nurse_corrected' ? '✓ ' : c === 'pending_check' ? '⚠ ' : ''}{CHECK_TEXT[c]}
     </span>
@@ -55,12 +66,12 @@ export function SectionHead({ title, state, pinnedHash, extra }: { title: string
   if (state && state.reviewed_hash) {
     const shownHash = pinnedHash ?? state.hash;
     badge = state.reviewed_hash === shownHash
-      ? <span className="text-[13px] text-teal">Reviewed {timeHM(state.reviewed_at)} · {state.reviewed_by}</span>
-      : <span className="rounded bg-amber-soft px-1.5 py-0.5 text-[13px] font-medium text-amber">Changed since your review</span>;
+      ? <span className="rounded-full bg-teal-soft px-2 py-0.5 text-[12.5px] font-medium text-teal">✓ Reviewed {timeHM(state.reviewed_at)} · {state.reviewed_by}</span>
+      : <span className="rounded-full bg-amber-soft px-2 py-0.5 text-[12.5px] font-semibold text-amber ring-1 ring-amber/20">Changed since your review</span>;
   }
   return (
-    <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-      <h3 className="text-[16px] font-semibold text-ink">{title}</h3>
+    <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+      <h3 className="flex items-center gap-2 text-[16px] font-semibold tracking-tight text-ink"><span aria-hidden className="h-4 w-1 rounded-full bg-teal" />{title}</h3>
       {badge}
       {extra}
     </div>
