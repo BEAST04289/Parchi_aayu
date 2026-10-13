@@ -200,7 +200,9 @@ export function buildBrief(b: Bundle, now: Date = new Date()): Brief {
     if (s.status === 'failed') open.push({ id: `failed-${s.id}`, text: `${s.label} was not processed: ${s.error ?? 'unknown error'} The original page is stored.`, refs: [ref(s.id)], check: 'pending_check', origin: 'rule' });
     else if (s.status === 'done' && s.readability === 'unreadable') open.push({ id: `retake-${s.id}`, text: `${s.label} could not be read. Ask for a clearer photo.`, refs: [ref(s.id)], check: 'pending_check', origin: 'rule' });
     else if (s.status === 'done' && !withheld.has(s.id) && !b.facts.some((f) => f.source_id === s.id))
-      open.push({ id: `nofacts-${s.id}`, text: `${s.label}: no structured facts extracted. Review the original page; this does not mean it has no medicines or allergies.`, refs: [ref(s.id)], check: 'pending_check', origin: 'rule' });
+      open.push({ id: `nofacts-${s.id}`, text: Number(s.timings?.held_back) > 0
+        ? `${s.label}: no readings shown. ${Number(s.timings?.held_back)} AI reading(s) were held back (for example marked as about another person or as a stated absence). Review the original page; this does not mean it has no medicines or allergies.`
+        : `${s.label}: no structured facts extracted. Review the original page; this does not mean it has no medicines or allergies.`, refs: [ref(s.id)], check: 'pending_check', origin: 'rule' });
   }
   for (const q of b.questions.filter((x) => x.state === 'unknown' || x.state === 'skipped')) {
     const t = candidateText(q.candidate_id);

@@ -67,6 +67,7 @@ export function toQuotedExtraction(x: LinePageExtraction, ocr: OcrPage): PageExt
 }
 
 // ---------------- Ollama (local) ----------------
+export const NUM_PREDICT = 3600;
 async function ollamaChat(vlmImageB64: string, ocr: OcrPage, enc: Encounter, numCtx: number) {
   const res = await fetch(`${cfg.ollamaUrl}/api/chat`, {
     method: 'POST',
@@ -75,7 +76,8 @@ async function ollamaChat(vlmImageB64: string, ocr: OcrPage, enc: Encounter, num
     body: JSON.stringify({
       model: cfg.ollamaModel, stream: false, keep_alive: '30m', format: LINE_SCHEMA,
       // 6k context: a 4k window truncated some pages in live testing (empty or cut-off JSON).
-      options: { temperature: 0, seed: 7, num_ctx: numCtx, num_predict: 1800 },
+      // 3600: a six-test lab page needs ~2000 output tokens; 1800 cut its JSON off (13 Oct). Prompt (~2000) + 3600 fits num_ctx 6144.
+      options: { temperature: 0, seed: 7, num_ctx: numCtx, num_predict: NUM_PREDICT },
       messages: [
         { role: 'system', content: PAGE_SYSTEM_LINES },
         { role: 'user', content: userText(ocr, enc), images: [vlmImageB64] },

@@ -85,7 +85,7 @@ export function verifyPageItems(items: ExtractedItem[], ocr: OcrPage | null, dru
     if (!item.value || !item.value.trim()) { held_back.push({ item, reason: 'empty value' }); continue; }
     if (item.subject === 'other_person') { held_back.push({ item, reason: 'about another person' }); continue; }
     // "not recorded" / "not established" states an absence; it is not a value and is never shown as one.
-    if (/^(not (recorded|established|known|mentioned|available)|n\/?a|nil|none|unknown)/i.test(item.value.trim())) { held_back.push({ item, reason: 'states absence, not a value' }); continue; }
+    if (/^(not (recorded|established|known|mentioned|available)|n\/?a|nil|none|unknown|null)\b/i.test(item.value.trim())) { held_back.push({ item, reason: 'states absence, not a value' }); continue; }
 
     const reasons: string[] = [];
     let evidence: 'box' | 'page' = 'page';

@@ -48,3 +48,7 @@ next-env.d.ts
 # local ML service environment and logs
 /services/ml/.venv/
 /services/ml/pip.log
+
+# isolated test build
+/.next-test/
+/.next-live/

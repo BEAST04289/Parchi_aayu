@@ -149,4 +149,11 @@ describe('buildBrief', () => {
     const lines = buildBrief(bb).reason.filter((l) => l.check !== 'verbatim');
     expect(lines.map((l) => l.text_hi)).toEqual(['i have chest ache']);
   });
+
+  it('a page whose readings were all held back says so instead of "no facts extracted"', () => {
+    const bb = bundle();
+    bb.sources.push(src({ id: 's9', seq: 9, label: 'p9', timings: { held_back: 5 } }));
+    const line = buildBrief(bb).open.find((l) => l.id === 'nofacts-s9')!;
+    expect(line.text).toContain('5 AI reading(s) were held back');
+  });
 });

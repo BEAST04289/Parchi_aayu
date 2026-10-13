@@ -38,6 +38,16 @@ describe('verifyPageItems (OCR and vision cross-check)', () => {
     expect(r.kept[1].precision).toBe('word');
     expect(r.kept[1].boxes[0][0]).toBeCloseTo(0.10); // narrowed to the '25' 'mg' words, not the whole quote
   });
+  it('stated absences ("not recorded", "none", literal "null") are held back, never kept as values', () => {
+    const r = verifyPageItems([
+      item({ kind: 'allergy_reaction', value: 'not recorded', ocr_quote: 'Metoprolol' }),
+      item({ kind: 'allergy_reaction', value: 'null', ocr_quote: null }),
+      item({ kind: 'allergy_reaction', value: 'None', ocr_quote: null }),
+      item({ kind: 'med_name', value: 'Nonexistentol', ocr_quote: null }),
+    ], ocr, drugs);
+    expect(r.held_back.map((h) => h.reason)).toEqual(['states absence, not a value', 'states absence, not a value', 'states absence, not a value']);
+    expect(r.kept.map((k) => k.item.value)).toEqual(['Nonexistentol']);
+  });
   it('25 vs 250 -> pending (no fuzzy numbers)', () => {
     const r = verifyPageItems([nameItem, item({ value: '250 mg', ocr_quote: 'Metoprolol 25 mg' })], ocr, drugs);
     expect(r.kept[1].check_state).toBe('pending_check');
