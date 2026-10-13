@@ -1,0 +1,20 @@
+{
+  "_review": "MEDICAL TEAMMATE MUST REVIEW. Deliberately narrow demo lookup used by rule allergy.class_exposure@1. Output is always 'for clinician review; current use unknown' - never a contraindication, never treatment advice. Cephalosporins are intentionally NOT included (cross-reactivity is a clinical judgement, not a lookup).",
+  "version": "allergy-classes@1",
+  "classes": [
+    {
+      "id": "penicillin",
+      "label_en": "penicillin",
+      "label_hi": "पेनिसिलिन",
+      "allergy_terms": ["penicillin", "penicillins", "pcn", "पेनिसिलिन"],
+      "drug_class": "penicillin"
+    },
+    {
+      "id": "sulfonamide",
+      "label_en": "sulfonamide (sulfa) antibiotic",
+      "label_hi": "सल्फा",
+      "allergy_terms": ["sulfa", "sulpha", "sulfonamide", "sulphonamide", "सल्फा"],
+      "drug_class": "sulfonamide"
+    }
+  ]
+}

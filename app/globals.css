@@ -1,26 +1,37 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Parchi tokens (docs/UI_SPEC.md). Light, calm clinic surfaces; no gradients. */
+@theme {
+  --color-page: #F6F7F4;
+  --color-surface: #FFFFFF;
+  --color-ink: #153342;
+  --color-ink-2: #526570;
+  --color-teal: #146C67;
+  --color-teal-soft: #E8F3EF;
+  --color-line: #D9E1DF;
+  --color-amber: #80501B;
+  --color-amber-soft: #FFF3DC;
+  --color-red: #A32F35;
+  --color-red-soft: #FCECEE;
+  --font-sans: var(--font-inter), var(--font-deva), system-ui, sans-serif;
+  --radius-staff: 10px;
+  --radius-patient: 12px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html { color-scheme: light; }
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-page);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
+.deva { font-family: var(--font-deva), var(--font-inter), system-ui, sans-serif; }
+
+:focus-visible { outline: 3px solid var(--color-teal); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+.flash-changed { animation: flash 1.8s ease-out; }
+@keyframes flash { 0% { box-shadow: 0 0 0 3px var(--color-teal); } 100% { box-shadow: 0 0 0 0 transparent; } }

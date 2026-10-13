@@ -1,0 +1,245 @@
+{
+  "synthetic": true,
+  "scope": "Typeset fixtures only; not a measured result",
+  "fields": [
+    {
+      "id": "g01",
+      "source_id": "p1",
+      "field": "event_date",
+      "expected_value": "2026-08-14",
+      "evidence_quote": "14 Aug 2026",
+      "precision": "day"
+    },
+    {
+      "id": "g02",
+      "source_id": "p1",
+      "field": "patient_identity",
+      "expected_value": "SYN-R52",
+      "evidence_quote": "Patient: Ramesh | Age: 52 years | Demo ID: SYN-R52"
+    },
+    {
+      "id": "g03",
+      "source_id": "p2",
+      "field": "event_date",
+      "expected_value": "2026-09-02",
+      "evidence_quote": "02 Sep 2026",
+      "precision": "day"
+    },
+    {
+      "id": "g04",
+      "source_id": "p2",
+      "field": "patient_identity",
+      "expected_value": "SYN-R52",
+      "evidence_quote": "Patient: Ramesh | Age: 52 years | Demo ID: SYN-R52"
+    },
+    {
+      "id": "g05",
+      "source_id": "p3",
+      "field": "event_date",
+      "expected_value": "2026-09-04",
+      "evidence_quote": "04 Sep 2026",
+      "precision": "day"
+    },
+    {
+      "id": "g06",
+      "source_id": "p3",
+      "field": "patient_identity",
+      "expected_value": "SYN-R52",
+      "evidence_quote": "Patient: Ramesh | Age: 52 years | Demo ID: SYN-R52"
+    },
+    {
+      "id": "g07",
+      "source_id": "p4",
+      "field": "event_date",
+      "expected_value": "2026-08-14",
+      "evidence_quote": "14 Aug 2026",
+      "precision": "day"
+    },
+    {
+      "id": "g08",
+      "source_id": "p4",
+      "field": "patient_identity",
+      "expected_value": "SYN-R52",
+      "evidence_quote": "Patient: Ramesh | Age: 52 years | Demo ID: SYN-R52"
+    },
+    {
+      "id": "g09",
+      "source_id": "p5",
+      "field": "event_date",
+      "expected_value": "2026-09-10",
+      "evidence_quote": "10 Sep 2026",
+      "precision": "day"
+    },
+    {
+      "id": "g10",
+      "source_id": "p5",
+      "field": "patient_identity",
+      "expected_value": "SYN-R52",
+      "evidence_quote": "Patient: Ramesh | Age: 52 years | Demo ID: SYN-R52"
+    },
+    {
+      "id": "g11",
+      "source_id": "p6",
+      "field": "event_date",
+      "expected_value": "2026-09-12",
+      "evidence_quote": "12 Sep 2026",
+      "precision": "day"
+    },
+    {
+      "id": "g12",
+      "source_id": "p6",
+      "field": "patient_identity",
+      "expected_value": "SYN-R52",
+      "evidence_quote": "Patient: Ramesh | Age: 52 years | Demo ID: SYN-R52"
+    },
+    {
+      "id": "g13",
+      "source_id": "p1",
+      "field": "medicine_name",
+      "expected_value": "Metoprolol",
+      "evidence_quote": "Metoprolol 25 mg | BD"
+    },
+    {
+      "id": "g14",
+      "source_id": "p1",
+      "field": "medicine_strength",
+      "expected_value": "25 mg",
+      "evidence_quote": "Metoprolol 25 mg | BD"
+    },
+    {
+      "id": "g15",
+      "source_id": "p1",
+      "field": "medicine_frequency",
+      "expected_value": "BD",
+      "evidence_quote": "Metoprolol 25 mg | BD",
+      "permitted_expansion": "twice daily",
+      "forbidden_inference": "after food"
+    },
+    {
+      "id": "g16",
+      "source_id": "p2",
+      "field": "lab_name",
+      "expected_value": "Hemoglobin",
+      "evidence_quote": "Hemoglobin: 12.9 g/dL"
+    },
+    {
+      "id": "g17",
+      "source_id": "p2",
+      "field": "lab_value",
+      "expected_value": "12.9",
+      "evidence_quote": "Hemoglobin: 12.9 g/dL"
+    },
+    {
+      "id": "g18",
+      "source_id": "p2",
+      "field": "lab_unit",
+      "expected_value": "g/dL",
+      "evidence_quote": "Hemoglobin: 12.9 g/dL"
+    },
+    {
+      "id": "g19",
+      "source_id": "p2",
+      "field": "lab_reference_range",
+      "expected_value": "13.0 - 17.0 g/dL",
+      "evidence_quote": "Reference interval printed by this synthetic lab: 13.0 - 17.0 g/dL",
+      "expected_rule_status": "below_report_range"
+    },
+    {
+      "id": "g20",
+      "source_id": "p3",
+      "field": "medicine_name",
+      "expected_value": "Metoprolol",
+      "evidence_quote": "Metoprolol 50 mg | BD"
+    },
+    {
+      "id": "g21",
+      "source_id": "p3",
+      "field": "medicine_strength",
+      "expected_value": "50 mg",
+      "evidence_quote": "Metoprolol 50 mg | BD"
+    },
+    {
+      "id": "g22",
+      "source_id": "p3",
+      "field": "medicine_frequency",
+      "expected_value": "BD",
+      "evidence_quote": "Metoprolol 50 mg | BD"
+    },
+    {
+      "id": "g23",
+      "source_id": "p4",
+      "field": "allergy_substance",
+      "expected_value": "Penicillin",
+      "evidence_quote": "Penicillin allergy recorded.",
+      "assertion": "documented_positive",
+      "clinical_confirmation": "not_established"
+    },
+    {
+      "id": "g24",
+      "source_id": "p4",
+      "field": "allergy_reaction",
+      "expected_value": null,
+      "evidence_quote": "Reaction details and reaction date: not recorded.",
+      "expected_state": "unknown"
+    },
+    {
+      "id": "g25",
+      "source_id": "p5",
+      "field": "medicine_name",
+      "expected_value": "Amoxicillin",
+      "evidence_quote": "Amoxicillin 500 mg | capsule | TDS",
+      "temporality": "historical_document"
+    },
+    {
+      "id": "g26",
+      "source_id": "p5",
+      "field": "medicine_strength",
+      "expected_value": "500 mg",
+      "evidence_quote": "Amoxicillin 500 mg | capsule | TDS"
+    },
+    {
+      "id": "g27",
+      "source_id": "p5",
+      "field": "medicine_form",
+      "expected_value": "capsule",
+      "evidence_quote": "Amoxicillin 500 mg | capsule | TDS"
+    },
+    {
+      "id": "g28",
+      "source_id": "p5",
+      "field": "medicine_frequency",
+      "expected_value": "TDS",
+      "evidence_quote": "Amoxicillin 500 mg | capsule | TDS",
+      "permitted_expansion": "three times daily"
+    },
+    {
+      "id": "g29",
+      "source_id": "p6",
+      "field": "lab_name",
+      "expected_value": "Serum creatinine",
+      "evidence_quote": "Serum creatinine: 1.1 mg/dL"
+    },
+    {
+      "id": "g30",
+      "source_id": "p6",
+      "field": "lab_value",
+      "expected_value": "1.1",
+      "evidence_quote": "Serum creatinine: 1.1 mg/dL"
+    },
+    {
+      "id": "g31",
+      "source_id": "p6",
+      "field": "lab_unit",
+      "expected_value": "mg/dL",
+      "evidence_quote": "Serum creatinine: 1.1 mg/dL"
+    },
+    {
+      "id": "g32",
+      "source_id": "p6",
+      "field": "lab_reference_range",
+      "expected_value": "0.7 - 1.3 mg/dL",
+      "evidence_quote": "Reference interval printed by this synthetic lab: 0.7 - 1.3 mg/dL",
+      "expected_rule_status": "within_report_range"
+    }
+  ]
+}

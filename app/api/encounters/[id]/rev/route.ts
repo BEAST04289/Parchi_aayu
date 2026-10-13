@@ -1,0 +1,18 @@
+import { requireStaff } from '@/lib/auth';
+import { loadBundle } from '@/lib/repo';
+import { buildBrief } from '@/lib/brief/build';
+import { assertUuid, json, route } from '@/lib/http';
+import { SECTION_KEYS, type RevInfo, type SectionKey } from '@/lib/types';
+
+/** Cheap poll target: clinical revision + per-section hashes, and a separate live-status hash. */
+export const GET = route(async (_req: Request, ctx: { params: Promise<{ id: string }> }) => {
+  await requireStaff();
+  const id = assertUuid((await ctx.params).id, 'encounter');
+  const b = buildBrief(await loadBundle(id));
+  const info: RevInfo = {
+    revision: b.revision,
+    live_hash: b.live_hash,
+    section_hashes: Object.fromEntries(SECTION_KEYS.map((k) => [k, b.sections[k].hash])) as Record<SectionKey, string>,
+  };
+  return json(info);
+});

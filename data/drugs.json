@@ -1,0 +1,29 @@
+{
+  "_review": "MEDICAL TEAMMATE MUST REVIEW before the demo. Small seed list of common Indian OPD medicines with commonly marketed strengths. Used ONLY to flag an unfamiliar name or unusual strength for a human source check. It never rewrites a reading, never validates a dose, and is not a formulary. Add any drug you handwrite for the eval pages.",
+  "version": "drugs@1",
+  "drugs": [
+    { "name": "Metoprolol", "class": "beta_blocker", "unit": "mg", "strengths": [12.5, 25, 50, 100], "aliases": ["metoprolol succinate", "metoprolol tartrate", "met xl", "metolar", "betaloc", "seloken"] },
+    { "name": "Atenolol", "class": "beta_blocker", "unit": "mg", "strengths": [25, 50, 100], "aliases": ["aten", "tenormin"] },
+    { "name": "Amlodipine", "class": "calcium_channel_blocker", "unit": "mg", "strengths": [2.5, 5, 10], "aliases": ["amlong", "stamlo", "amlokind"] },
+    { "name": "Telmisartan", "class": "arb", "unit": "mg", "strengths": [20, 40, 80], "aliases": ["telma", "telmikind", "telsar"] },
+    { "name": "Losartan", "class": "arb", "unit": "mg", "strengths": [25, 50, 100], "aliases": ["losar", "repace", "losacar"] },
+    { "name": "Ramipril", "class": "ace_inhibitor", "unit": "mg", "strengths": [1.25, 2.5, 5, 10], "aliases": ["cardace"] },
+    { "name": "Metformin", "class": "biguanide", "unit": "mg", "strengths": [250, 500, 850, 1000], "aliases": ["glycomet", "glyciphage", "obimet"] },
+    { "name": "Glimepiride", "class": "sulfonylurea", "unit": "mg", "strengths": [0.5, 1, 2, 3, 4], "aliases": ["amaryl", "glimy", "glimestar"] },
+    { "name": "Atorvastatin", "class": "statin", "unit": "mg", "strengths": [10, 20, 40, 80], "aliases": ["atorva", "storvas", "atocor", "lipitor"] },
+    { "name": "Rosuvastatin", "class": "statin", "unit": "mg", "strengths": [5, 10, 20, 40], "aliases": ["rosuvas", "rozavel", "crestor"] },
+    { "name": "Aspirin", "class": "antiplatelet", "unit": "mg", "strengths": [75, 150, 325], "aliases": ["ecosprin", "acetylsalicylic acid"] },
+    { "name": "Clopidogrel", "class": "antiplatelet", "unit": "mg", "strengths": [75], "aliases": ["clopilet", "deplatt", "plavix"] },
+    { "name": "Pantoprazole", "class": "ppi", "unit": "mg", "strengths": [20, 40], "aliases": ["pan", "pantocid", "pantop"] },
+    { "name": "Omeprazole", "class": "ppi", "unit": "mg", "strengths": [10, 20, 40], "aliases": ["omez"] },
+    { "name": "Amoxicillin", "class": "penicillin", "unit": "mg", "strengths": [250, 500], "aliases": ["amoxycillin", "mox", "novamox", "amoxil"] },
+    { "name": "Amoxicillin + Clavulanic acid", "class": "penicillin", "unit": "mg", "strengths": [375, 625, 1000], "aliases": ["amoxicillin clavulanate", "co-amoxiclav", "augmentin", "clavam", "moxikind-cv"] },
+    { "name": "Azithromycin", "class": "macrolide", "unit": "mg", "strengths": [250, 500], "aliases": ["azithral", "azee", "zithromax"] },
+    { "name": "Ciprofloxacin", "class": "fluoroquinolone", "unit": "mg", "strengths": [250, 500, 750], "aliases": ["ciplox", "cifran"] },
+    { "name": "Cotrimoxazole", "class": "sulfonamide", "unit": "mg", "strengths": [480, 960], "aliases": ["sulfamethoxazole + trimethoprim", "septran", "bactrim"] },
+    { "name": "Paracetamol", "class": "analgesic", "unit": "mg", "strengths": [500, 650], "aliases": ["acetaminophen", "dolo", "crocin", "calpol"] },
+    { "name": "Ibuprofen", "class": "nsaid", "unit": "mg", "strengths": [200, 400, 600], "aliases": ["brufen", "ibugesic"] },
+    { "name": "Cetirizine", "class": "antihistamine", "unit": "mg", "strengths": [5, 10], "aliases": ["cetzine", "okacet", "alerid"] },
+    { "name": "Levothyroxine", "class": "thyroid", "unit": "mcg", "strengths": [12.5, 25, 50, 75, 88, 100, 112, 125, 150], "aliases": ["thyronorm", "eltroxin", "thyrox"] }
+  ]
+}

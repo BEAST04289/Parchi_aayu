@@ -1,0 +1,36 @@
+{
+  "_review": "C (medical teammate) must review this list. This is a narrow demo trigger for staff assistance, NOT triage. Any match pauses intake and alerts staff; a false positive is the safe direction. Absence of a match never means safe. Matching is substring on normalized text (lowercase, collapsed whitespace, punctuation removed). Both spelling variants are listed because chandrabindu/anusvara and nukta vary in ASR output.",
+  "version": "urgent-triggers@1",
+  "groups": [
+    {
+      "id": "chest_pain",
+      "label_en": "Chest pain",
+      "phrases": ["सीने में दर्द", "सीने में तेज दर्द", "छाती में दर्द", "छाती में भारीपन", "सीने में भारीपन", "seene mein dard", "seene me dard", "sine me dard", "chhati mein dard", "chhati me dard", "chest pain", "chest mein dard", "chest me dard"]
+    },
+    {
+      "id": "breathing",
+      "label_en": "Breathing difficulty",
+      "phrases": ["साँस नहीं आ रही", "सांस नहीं आ रही", "साँस लेने में तकलीफ", "सांस लेने में तकलीफ", "साँस फूल रही", "सांस फूल रही", "saans nahi aa rahi", "sans nahi aa rahi", "saans lene mein takleef", "saans phool rahi", "cannot breathe", "can't breathe", "breathless"]
+    },
+    {
+      "id": "fainting",
+      "label_en": "Fainting / unconscious",
+      "phrases": ["बेहोश", "चक्कर आकर गिर", "behosh", "chakkar aakar gir", "fainted", "passed out"]
+    },
+    {
+      "id": "stroke_signs",
+      "label_en": "Possible stroke signs",
+      "phrases": ["मुँह टेढ़ा", "मुंह टेढ़ा", "मुंह टेढा", "बोलने में दिक्कत", "एक तरफ कमजोरी", "एक तरफ कमज़ोरी", "लकवा", "muh tedha", "munh tedha", "bolne mein dikkat", "lakwa", "face drooping", "slurred speech"]
+    },
+    {
+      "id": "bleeding",
+      "label_en": "Heavy bleeding / vomiting blood",
+      "phrases": ["बहुत खून", "खून की उल्टी", "khoon ki ulti", "bahut khoon", "vomiting blood", "heavy bleeding"]
+    },
+    {
+      "id": "seizure",
+      "label_en": "Seizure",
+      "phrases": ["दौरा पड़", "दौरा पड", "मिर्गी", "daura pad", "mirgi", "seizure"]
+    }
+  ]
+}

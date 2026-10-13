@@ -1,0 +1,37 @@
+{
+  "_review": "C (medical teammate) must read every Hindi line aloud once before TTS generation. Edit wording here only; then rerun scripts/gen-tts.ts.",
+  "tts": { "model": "bulbul:v3", "language_code": "hi-IN", "speaker": "priya", "output_audio_codec": "mp3" },
+  "prompts": [
+    { "id": "consent", "audio": "consent.mp3", "hi": "आपकी बातें और पर्चे डॉक्टर से मिलने से पहले क्लिनिक स्टाफ को दिखाए जाएँगे।", "en": "What you tell us and your papers will be shown to the clinic staff before you see the doctor." },
+    { "id": "voice_consent", "audio": null, "hi": "क्या हम आपकी आवाज़ रिकॉर्ड कर सकते हैं? यह ज़रूरी नहीं है, आप लिखकर भी बता सकते हैं।", "en": "May we record your voice? This is optional; you can also type." },
+    { "id": "complaint", "audio": "complaint.mp3", "hi": "आज आपको क्या परेशानी है?", "en": "What problem brings you here today?", "sub_hi": "बोलकर या लिखकर बताइए।", "sub_en": "Speak or type your answer." },
+    { "id": "add_papers", "audio": "add_papers.mp3", "hi": "अपने पर्चे और रिपोर्ट की फोटो लीजिए।", "en": "Please take photos of your prescriptions and reports." },
+    { "id": "readback", "audio": null, "hi": "मैंने यह समझा:", "en": "Here is what I understood:" },
+    { "id": "check", "audio": "check.mp3", "hi": "एक बार देख लीजिए, सब सही है?", "en": "Please check: is everything correct?" },
+    { "id": "done", "audio": "done.mp3", "hi": "आपकी जानकारी स्टाफ को भेज दी गई है। कृपया अपनी बारी का इंतज़ार करें।", "en": "Your information has been sent to the staff. Please wait for your turn." },
+    { "id": "urgent_wait", "audio": "urgent_wait.mp3", "hi": "स्टाफ को बुलाया जा रहा है। अगर कोई तुरंत न आए, तो पास के स्टाफ को अभी बताएं।", "en": "We are calling the staff. If no one comes right away, tell nearby staff now." },
+    { "id": "staff_acknowledged", "audio": "staff_acknowledged.mp3", "hi": "स्टाफ ने आपका अनुरोध देख लिया है।", "en": "Staff acknowledged your request." },
+    { "id": "offline_help", "audio": null, "hi": "नेटवर्क नहीं है। कृपया पास के स्टाफ को अभी बताएं।", "en": "No network. Please tell nearby staff now." },
+    { "id": "help_button", "audio": null, "hi": "तबीयत बहुत खराब है? अभी स्टाफ को बताएं।", "en": "Feeling very unwell? Tell the staff now." },
+    { "id": "stt_failed", "audio": null, "hi": "सुनने में दिक्कत हुई। फिर से बोलें या लिखकर बताइए।", "en": "We could not hear that. Please speak again or type." }
+  ],
+  "buttons": {
+    "confirm": { "hi": "सही है", "en": "That's right" },
+    "edit": { "hi": "बदलें", "en": "Change" },
+    "rerecord": { "hi": "फिर से बोलें", "en": "Say it again" },
+    "unknown": { "hi": "पता नहीं", "en": "I don't know" },
+    "skip": { "hi": "छोड़ें", "en": "Skip" },
+    "camera": { "hi": "फोटो लें", "en": "Take photo" },
+    "gallery": { "hi": "गैलरी से चुनें", "en": "Choose from gallery" },
+    "finish": { "hi": "पूरा करें", "en": "Finish" },
+    "record": { "hi": "बोलने के लिए दबाएँ", "en": "Tap to speak" },
+    "stop": { "hi": "रोकें", "en": "Stop" }
+  },
+  "candidates": [
+    { "id": "onset_missing", "priority": 1, "audio": "q_onset.mp3", "hi": "यह परेशानी कब से है?", "en": "Since when have you had this problem?", "why_en": "A complaint was recorded without when it started." },
+    { "id": "medicine_old_or_new", "priority": 2, "audio": "q_old_new.mp3", "hi": "आप पुरानी दवा ले रहे हैं या नए पर्चे वाली?", "en": "Are you taking the old medicine or the one on the new prescription?", "why_en": "Two papers show different strengths of the same medicine.", "details_from": "verified med_strength facts of the changed medicine, e.g. 'पर्चों में: 25 mg (14 Aug) · 50 mg (04 Sep)'" },
+    { "id": "medicine_unknown", "priority": 3, "audio": "q_unknown_med.mp3", "hi": "क्या आप दवा की पट्टी या डिब्बे की फोटो दिखा सकते हैं?", "en": "Can you show a photo of the medicine strip or box?", "why_en": "A tablet was described without a name." },
+    { "id": "page_identity", "priority": 4, "audio": "q_identity.mp3", "hi": "क्या यह पर्चा आपका है?", "en": "Is this paper yours?", "why_en": "A page shows a different name." },
+    { "id": "patient_concern", "priority": 5, "audio": "q_concern.mp3", "hi": "डॉक्टर को कौन सी बात ज़रूर बताना चाहते हैं?", "en": "What do you especially want the doctor to know?", "why_en": "Optional last question if fewer than 3 were asked." }
+  ]
+}
