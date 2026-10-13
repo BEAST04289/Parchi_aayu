@@ -6,13 +6,14 @@ import { CheckTag, Field, SectionHead, SourceChip, type OpenSource } from './ui'
 import type { Brief, BriefLine, FieldRef, Issue, RevInfo, SectionKey, StaffRole } from '@/lib/types';
 
 const BODY: SectionKey[] = ['reason', 'medicines', 'labs', 'timeline', 'open'];
-const TITLES: Record<SectionKey, string> = { attention: 'Attention', reason: 'Reason for visit', medicines: 'Medicines', labs: 'Recent labs', timeline: 'Dated history', open: 'Open questions and coverage' };
+const DOC_LABEL: Record<string, string> = { prescription: 'Prescription', lab_report: 'Lab report', history_note: 'History note', other: 'Document' };
+const TITLES: Record<SectionKey, string> ={ attention: 'Attention', reason: 'Reason for visit', medicines: 'Medicines', labs: 'Recent labs', timeline: 'Dated history', open: 'Open questions and coverage' };
 
 /**
  * The brief body is pinned to what the reader has on screen. New attention items (allergy, identity)
  * apply immediately; other changes wait behind "New information · Review changes". Polls every 2 s.
  */
-export default function BriefView({ encounterId, role, onOpen }: { encounterId: string; role: StaffRole; onOpen: OpenSource }) {
+export default function BriefView({ encounterId, role, onOpen, readOnly = false }: { encounterId: string; role: StaffRole; onOpen: OpenSource; readOnly?: boolean }) {
   const [pinned, setPinned] = useState<Brief | null>(null);
   const [latest, setLatest] = useState<Brief | null>(null);
   const [changed, setChanged] = useState<SectionKey[]>([]);
@@ -101,7 +102,7 @@ export default function BriefView({ encounterId, role, onOpen }: { encounterId: 
             <button role="tab" aria-selected={tab === 'brief'} onClick={() => setTab('brief')} className={clsx('px-3 py-1.5 text-[14px]', tab === 'brief' && 'bg-teal text-white')}>Brief</button>
             <button role="tab" aria-selected={tab === 'queue'} onClick={() => setTab('queue')} className={clsx('px-3 py-1.5 text-[14px]', tab === 'queue' && 'bg-teal text-white')}>Needs source check ({pendingFields.length})</button>
           </div>
-          {role === 'doctor' && tab === 'brief' && <button onClick={markReviewed} className="rounded-md bg-teal px-3 py-1.5 text-[14px] font-medium text-white">Mark reviewed</button>}
+          {role === 'doctor' && tab === 'brief' && !readOnly && <button onClick={markReviewed} className="rounded-md bg-teal px-3 py-1.5 text-[14px] font-medium text-white">Mark reviewed</button>}
         </div>
       </div>
 
@@ -128,8 +129,35 @@ export default function BriefView({ encounterId, role, onOpen }: { encounterId: 
         <div className="space-y-2">{latest.attention.map((i) => <IssueRow key={i.id} i={i} onOpen={onOpen} />)}</div>
       </section>
 
+      {/* Every uploaded paper, always visible: click opens the original with its readings. */}
+      <section aria-label="Pages" className="mb-4 rounded-md border border-line bg-surface p-3" data-testid="pages">
+        <h3 className="mb-2 text-[16px] font-semibold">Patient&apos;s papers ({latest.pages.length})</h3>
+        {latest.pages.length === 0 ? <Empty text="No pages uploaded." /> : (
+          <ul className="grid grid-cols-[repeat(auto-fill,minmax(132px,1fr))] gap-3">
+            {latest.pages.map((p) => (
+              <li key={p.id} className="flex flex-col rounded-md border border-line bg-page">
+                <button type="button" onClick={(e) => onOpen(p.id, null, e.currentTarget)} aria-label={`Open source ${p.label}`}
+                  className="group relative block h-[150px] overflow-hidden rounded-t-md bg-surface focus-visible:outline-2 focus-visible:outline-teal">
+                  <img src={`/api/sources/${p.id}/file`} alt={`Original page ${p.label}`} loading="lazy" className="h-full w-full object-cover object-top group-hover:opacity-90" />
+                  <span className="absolute left-1 top-1 rounded bg-surface/95 px-1.5 py-0.5 text-[13px] font-semibold text-teal">[{p.label}]</span>
+                </button>
+                <div className="px-2 py-1.5 text-[13px] leading-snug">
+                  <div className="font-medium">{(p.doc_type ? DOC_LABEL[p.doc_type] : null) ?? 'Page'}{p.date_label ? ` · ${p.date_label}` : ''}</div>
+                  {p.clinic && <div className="truncate text-ink-2" title={p.clinic}>{p.clinic}</div>}
+                  <div className="flex items-center gap-1.5">
+                    <span className={clsx(p.status === 'failed' || p.readability === 'unreadable' || p.identity === 'withheld' ? 'text-amber' : 'text-ink-2')}>{pageStatus(p.status, p.readability, p.identity)}</span>
+                    <span className="text-[11px] text-ink-2">{p.mode === 'replay' ? 'FIXTURE REPLAY' : p.mode.toUpperCase()}</span>
+                  </div>
+                  {p.status === 'failed' && !readOnly && <div className="mt-1"><RetryButton id={p.id} onDone={fetchBrief} /></div>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       {tab === 'queue' ? (
-        <NurseQueue fields={pendingFields} onOpen={onOpen} onDone={fetchBrief} />
+        <NurseQueue fields={pendingFields} onOpen={onOpen} onDone={fetchBrief} readOnly={readOnly} />
       ) : (
         <div className="grid gap-5">
           <Section k="reason" pinned={pinned} latest={latest} flash={flash}>
@@ -205,22 +233,6 @@ export default function BriefView({ encounterId, role, onOpen }: { encounterId: 
             {pinned.open.length === 0 ? <Empty text="No open items." /> : pinned.open.map((l) => <Line key={l.id} l={l} onOpen={onOpen} />)}
           </Section>
 
-          <section aria-label="Pages" className="rounded-md border border-line bg-surface p-3" data-testid="pages">
-            <h3 className="mb-2 text-[16px] font-semibold">Uploaded pages (live status)</h3>
-            {latest.pages.length === 0 ? <Empty text="No pages uploaded." /> : (
-              <ul className="flex flex-wrap gap-2">
-                {latest.pages.map((p) => (
-                  <li key={p.id} className="flex items-center gap-2 rounded border border-line px-2 py-1 text-[14px]">
-                    <SourceChip r={{ source_id: p.id, label: p.label }} onOpen={onOpen} />
-                    <span className={clsx(p.status === 'failed' ? 'text-amber' : 'text-ink-2')}>{pageStatus(p.status, p.readability, p.identity)}</span>
-                    <span className="text-[12px] text-ink-2">{p.mode.toUpperCase()}</span>
-                    {p.status === 'failed' && <RetryButton id={p.id} onDone={fetchBrief} />}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
           <footer className="border-t border-line pt-2 text-[14px] text-ink-2" data-testid="ledger">
             <strong className="text-ink">Citation coverage:</strong> {latest.ledger.lines} lines · {latest.ledger.with_source_link} link to a stored source · {latest.ledger.without_source_link} without a source link · {latest.ledger.pending_check} pending source check · {latest.ledger.human_checked} checked by staff · {latest.ledger.held_back} AI readings held back
             {latest.timers.intake_seconds !== null && <> · kiosk intake {Math.round(latest.timers.intake_seconds / 60)} min (measured)</>}
@@ -294,17 +306,18 @@ function RetryButton({ id, onDone }: { id: string; onDone: () => void }) {
   );
 }
 
-function NurseQueue({ fields, onOpen, onDone }: { fields: FieldRef[]; onOpen: OpenSource; onDone: () => Promise<unknown> }) {
+function NurseQueue({ fields, onOpen, onDone, readOnly }: { fields: FieldRef[]; onOpen: OpenSource; onDone: () => Promise<unknown>; readOnly: boolean }) {
   if (fields.length === 0) return <p className="rounded-md border border-line bg-surface p-4 text-ink-2">No readings are waiting for a source check.</p>;
   return (
     <div className="grid gap-3" data-testid="nurse-queue">
-      {fields.map((f) => <QueueItem key={f.fact_id} f={f} onOpen={onOpen} onDone={onDone} />)}
+      {readOnly && <p className="rounded-md border border-line bg-surface p-3 text-[14px] text-ink-2">Read-only demo: a nurse confirms, corrects or marks each reading unreadable after signing in. Open a chip to compare the reading with the original page.</p>}
+      {fields.map((f) => <QueueItem key={f.fact_id} f={f} onOpen={onOpen} onDone={onDone} readOnly={readOnly} />)}
       <p className="text-[13px] text-ink-2">Checking the source does not approve this medicine or dose. Clinical decisions stay with the clinician.</p>
     </div>
   );
 }
 
-function QueueItem({ f, onOpen, onDone }: { f: FieldRef; onOpen: OpenSource; onDone: () => Promise<unknown> }) {
+function QueueItem({ f, onOpen, onDone, readOnly }: { f: FieldRef; onOpen: OpenSource; onDone: () => Promise<unknown>; readOnly: boolean }) {
   const [mode, setMode] = useState<'idle' | 'correct'>('idle');
   const [value, setValue] = useState(f.value);
   const [msg, setMsg] = useState<string | null>(null);
@@ -327,7 +340,7 @@ function QueueItem({ f, onOpen, onDone }: { f: FieldRef; onOpen: OpenSource; onD
         <SourceChip r={{ source_id: f.source_id, label: f.source_label }} onOpen={onOpen} factId={f.fact_id} />
       </div>
       <ul className="mt-1 list-disc pl-5 text-[14px] text-amber">{f.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
-      {mode === 'correct' ? (
+      {readOnly ? null : mode === 'correct' ? (
         <div className="mt-2 flex flex-wrap gap-2">
           <label className="sr-only" htmlFor={`v-${f.fact_id}`}>Corrected value</label>
           <input id={`v-${f.fact_id}`} value={value} onChange={(e) => setValue(e.target.value)} className="rounded border border-line px-2 py-1" />

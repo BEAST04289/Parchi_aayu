@@ -1,4 +1,4 @@
-import { requireStaff } from '@/lib/auth';
+import { requireStaffOrDemo } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { getSource } from '@/lib/repo';
 import { dateLabel } from '@/lib/verify/dates';
@@ -7,9 +7,10 @@ import type { Fact, Source } from '@/lib/types';
 
 /** Evidence for the drawer. The file itself is fetched from /api/sources/[id]/file with the same staff session. */
 export const GET = route(async (_req: Request, ctx: { params: Promise<{ id: string }> }) => {
-  await requireStaff();
   const id = assertUuid((await ctx.params).id, 'source');
   const s = await getSource(id);
+  // Staff, or the demo viewer of this source's encounter; everyone else gets 401 whether or not it exists.
+  await requireStaffOrDemo(s?.encounter_id ?? null);
   if (!s) throw new HttpError(404, 'Source unavailable.');
   const d = await db();
   const facts = await d.query<Fact>('select * from facts where source_id = $1 order by created_at, id', [id]);

@@ -50,7 +50,7 @@ export default function EvidenceDrawer({ sourceId, factId, onClose, returnFocus 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-ink/20" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Source evidence"
-        className="flex h-full w-full max-w-[460px] flex-col border-l border-line bg-surface shadow-xl outline-none">
+        className="flex h-full w-full max-w-[560px] flex-col border-l border-line bg-surface shadow-xl outline-none">
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
           <div>
             <div className="text-[18px] font-semibold">Source {ev?.source.label ?? ''}</div>
@@ -68,6 +68,7 @@ export default function EvidenceDrawer({ sourceId, factId, onClose, returnFocus 
                 <button className="rounded border border-line px-2 py-1" onClick={() => setZoom(1)}>Fit</button>
                 <button className="rounded border border-line px-2 py-1" onClick={() => setZoom((z) => Math.min(4, z + 0.5))} aria-label="Zoom in">+</button>
                 <span className="text-[13px] text-ink-2">{Math.round(zoom * 100)}%</span>
+                {ev.source.file_url && <a href={ev.source.file_url} target="_blank" rel="noopener noreferrer" className="rounded border border-line px-2 py-1 text-[13px] text-teal hover:bg-teal-soft">Open full size</a>}
                 {openMs !== null && <span className="ml-auto text-[12px] text-ink-2" data-testid="evidence-open-ms">opened in {openMs} ms</span>}
               </div>
               {ev.source.file_url ? (

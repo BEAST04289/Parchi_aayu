@@ -95,6 +95,7 @@ function Workspace({ me, onLogout }: { me: Me; onLogout: () => void }) {
       <div className="flex flex-1">
         <aside className="w-[208px] shrink-0 border-r border-line bg-surface p-3">
           <button onClick={() => setCreating(true)} className="mb-3 w-full rounded-md bg-teal px-3 py-2 text-[14px] font-medium text-white">+ Create encounter</button>
+          <a href="/demo" className="mb-3 block w-full rounded-md border border-teal px-3 py-2 text-center text-[14px] font-medium text-teal hover:bg-teal-soft" data-testid="open-demo">View demo patient (read-only)</a>
           <div className="mb-2 text-[12px] font-semibold text-ink-2">Synthetic demo encounters</div>
           <ul className="grid gap-1">
             {encs.map((e) => (

@@ -1,3 +1,41 @@
+# Parchi: The Two-Minute Doctor (6SYNC7 · AAYU-TARV · T01)
+
+Parchi turns a patient's own words (Hindi-first kiosk) and their scattered prescriptions and lab reports into a **source-linked, dated, one-screen clinician brief**. Every value on the brief opens the original page it came from. Synthetic hackathon prototype, not a clinical deployment.
+
+## Live demo (no login)
+
+**https://internet-border-musical-meditation.trycloudflare.com/demo** (temporary Cloudflare Quick Tunnel to the team laptop; works while the laptop and tunnel are running.)
+
+What a judge can do there, read-only:
+- See Ramesh, 52 (fictional): an **Attention** strip (penicillin allergy recorded; amoxicillin, a penicillin, prescribed 10 Sep), reason for visit in the patient's own Hindi words, a medicine table with a documented strength change (Metoprolol 25 mg → 50 mg), labs against the report's own range, a dated history and the open questions.
+- See **all six uploaded papers** as thumbnails and click any page or any `[pN]` chip to open the original page with the reading and its quote.
+- See the **"Needs source check"** queue: every reading not yet checked against its source stays visible, in amber.
+
+Honest labelling: the demo patient's pages are **replayed from hand-authored fixture readings (FIXTURE REPLAY)**, not live AI output; the page says so. The demo cookie is server-signed and scoped to that one encounter: it cannot read other encounters, list encounters, or perform any staff action (401). Staff routes (`/staff`) still require the passcode.
+
+## How it works
+- **Kiosk** `/k/[token]`: one question at a time, typed or spoken answers with read-back, photos of papers compressed on the device, a help button that raises a staff alert.
+- **Pipeline**: OCR (local RapidOCR / PP-OCR, or Google Vision) → extraction (local Qwen3-VL via Ollama, or Claude) that must **cite OCR lines** → a deterministic **verifier** that checks every value token against the cited OCR text (12.5 ≠ 125, 25 ≠ 250, BD ≠ 8D). Anything unsupported is `pending_check`, shown in amber and queued for a nurse, never dropped.
+- **Brief**: a pure function recomputed on every read; section hashes drive "New information · Review changes" and "Changed since your review".
+- **Staff** `/staff`: doctor and nurse modes, evidence drawer, nurse confirm/correct/unreadable with compare-and-swap, alerts across encounters.
+
+## Run locally
+```bash
+npm install
+# .env.local: SESSION_SECRET (32+ chars), STAFF_PASSCODE, and either local models
+# (OCR_PROVIDER=paddle, EXTRACTION_PROVIDER=ollama, ML_SERVICE_URL, OLLAMA_URL, OLLAMA_MODEL)
+# or cloud keys (GOOGLE_VISION_API_KEY, ANTHROPIC_API_KEY). Without DATABASE_URL a local PGlite DB is used.
+npm run build && npx next start -p 3000      # open /staff, or /demo for the read-only demo patient
+npx vitest run                               # 64 unit tests (verifier, dates, identity, brief)
+```
+
+## Known limitations (13 Oct 2026)
+- The public demo patient is fixture replay. LIVE local extraction (RapidOCR + Qwen3-VL 4B) works on the typeset fixtures; on three new generated pages it initially failed because the model's line-id list ran away until the token limit. The schema now bounds that list (fixed and re-tested on page 1: schema-valid in 16 s); the other new pages have not been re-run.
+- Lab ranges printed without a unit are shown as "not classified" (units must match exactly).
+- Not run: Supabase Postgres, Vercel, Sarvam voice, phone over HTTPS.
+
+---
+
 > **Build-day note:** `PLAN.md` overrides this file wherever they conflict (simplified architecture, 6 tables, polling, no pairing codes/RLS/snapshot tables/PDF). Use `prompts/00-scaffold.md` then `prompts/A|B|C-*.md`; the old numbered prompts are in `prompts/superseded/`.
 
 # Parchi: Round 2 build kit

@@ -63,7 +63,12 @@ export function buildBrief(b: Bundle, now: Date = new Date()): Brief {
       ...(q ? { asked: candidateText(q.candidate_id)?.en ?? q.candidate_id } : {}),
     });
   }
+  const seenReason = new Set<string>();
   for (const f of facts.filter((x) => ['visit_reason', 'complaint', 'onset', 'duration', 'patient_concern'].includes(x.kind))) {
+    // The same words from the same answer extracted under several kinds are shown once.
+    const k = `${f.source_id}|${normTokens(f.value).join(' ')}`;
+    if (seenReason.has(k)) continue;
+    seenReason.add(k);
     reason.push({ id: `fact-${f.id}`, text: f.value_en ?? f.value, text_hi: f.value, refs: [ref(f.source_id, [f.id])], fields: [field(f)], check: f.check_state, origin: 'patient_reported' });
   }
 
@@ -138,13 +143,19 @@ export function buildBrief(b: Bundle, now: Date = new Date()): Brief {
 
   // ---------- Attention ----------
   const attention: Issue[] = [];
-  for (const a of facts.filter((x) => x.kind === 'allergy' && x.assertion === 'present')) {
+  // An allergy is never hidden on the model's word alone: "uncertain", and "denied" whose own source
+  // sentence has no negation word, stay in Attention with a pending marker (fail toward visibility).
+  const unclear = new Set<string>();
+  const allergies = facts.filter((x) => x.kind === 'allergy' && (x.assertion !== 'denied' || !negationInQuote(x)));
+  for (const a of allergies) {
     const s = srcById.get(a.source_id);
     const reaction = facts.find((x) => x.kind === 'allergy_reaction' && x.group_key && x.group_key === a.group_key);
+    const id = `allergy-${a.id}`;
+    if (a.assertion !== 'present') unclear.add(id);
     attention.push({
-      id: `allergy-${a.id}`, rule_id: 'allergy.recorded@1', level: 'allergy', section: 'attention',
-      title: `${a.value} allergy recorded`,
-      detail: `${where(s)}. ${reaction ? `Reaction recorded: ${reaction.value}.` : 'Reaction not recorded.'}`,
+      id, rule_id: 'allergy.recorded@1', level: 'allergy', section: 'attention',
+      title: a.assertion === 'present' ? `${a.value} allergy recorded` : `${a.value} allergy mentioned (wording unclear)`,
+      detail: `${where(s)}. ${reaction ? `Reaction recorded: ${reaction.value}.` : 'Reaction not recorded.'}${a.assertion === 'denied' ? ' The AI read this as a negative statement, but the source sentence has no negation word. Check the source.' : a.assertion === 'uncertain' ? ' Check the source wording.' : ''}`,
       fact_ids: [a.id, ...(reaction ? [reaction.id] : [])], refs: [ref(a.source_id, [a.id, ...(reaction ? [reaction.id] : [])])],
     });
     const aTokens = normTokens(a.value);
@@ -157,15 +168,16 @@ export function buildBrief(b: Bundle, now: Date = new Date()): Brief {
       attention.push({
         id: `class-${a.id}-${m.id}`, rule_id: 'allergy.class_exposure@1', level: 'allergy', section: 'attention',
         title: `${m.value} (a ${cls.label_en}) was prescribed${srcDate(ms).label ? ` ${srcDate(ms).label}` : ''}${ms?.clinic ? ` · ${ms.clinic}` : ''}`,
-        detail: `${a.value} allergy is recorded (${a.source_id === m.source_id ? 'same page' : label(a.source_id)}). For clinician review; current use unknown.`,
+        detail: `${a.value} allergy is ${a.assertion === 'present' ? 'recorded' : 'mentioned'} (${a.source_id === m.source_id ? 'same page' : label(a.source_id)}). For clinician review; current use unknown.`,
         fact_ids: [a.id, m.id], refs: [ref(m.source_id, [m.id]), ref(a.source_id, [a.id])],
       });
+      if (a.assertion !== 'present') unclear.add(`class-${a.id}-${m.id}`);
     }
   }
   const factById = new Map(facts.map((f) => [f.id, f]));
   for (const i of attention) {
     const states = i.fact_ids.map((id) => factById.get(id)?.check_state).filter(Boolean) as Fact['check_state'][];
-    if (states.some((s) => s === 'pending_check' || s === 'unreadable')) i.check = 'pending_check';
+    if (unclear.has(i.id) || states.some((s) => s === 'pending_check' || s === 'unreadable')) i.check = 'pending_check';
     else if (states.length) i.check = states.every((s) => s === states[0]) ? states[0] : 'mixed';
   }
   for (const s of b.sources.filter((x) => withheld.has(x.id))) {
@@ -178,7 +190,7 @@ export function buildBrief(b: Bundle, now: Date = new Date()): Brief {
 
   // ---------- Open questions and coverage ----------
   const open: BriefLine[] = [];
-  for (const f of facts.filter((x) => x.kind === 'allergy' && x.assertion === 'denied')) {
+  for (const f of facts.filter((x) => x.kind === 'allergy' && x.assertion === 'denied' && negationInQuote(x))) {
     open.push({ id: `denied-${f.id}`, text: `Documented negative statement: “${f.quote ?? f.value}”. Not proof of no allergies.`, refs: [ref(f.source_id, [f.id])], fields: [field(f)], check: f.check_state, origin: 'documented' });
   }
   for (const f of facts.filter((x) => x.check_state === 'pending_check')) {
@@ -258,6 +270,19 @@ export function buildBrief(b: Bundle, now: Date = new Date()): Brief {
     review_history: reviews.map((e) => ({ at: e.created_at, actor: e.actor })),
     timers: { intake_seconds: started && done ? Math.round((done - started) / 1000) : null },
   };
+}
+
+const NEGATION = /(^|[^\p{L}])(no|not|nil|none|never|nkda|nka|denies|denied|negative|without)(?![\p{L}])|नहीं|नही/iu;
+
+/**
+ * A "denied" allergy reading stands only if the allergen's own sentence in the cited quote has a
+ * negation word ("No known penicillin allergy"). A "not recorded" elsewhere in the quote does not count.
+ */
+export function negationInQuote(f: Pick<Fact, 'value' | 'quote'>): boolean {
+  const quote = f.quote ?? '';
+  const allergen = normTokens(f.value);
+  const own = quote.split(/[.;\n।]+/).filter((s) => allergen.length > 0 && findRun(normTokens(s), allergen) >= 0);
+  return NEGATION.test(own.length ? own.join(' ') : quote);
 }
 
 /** Report-specific range check: plain number, explicit range, identical units. Anything else is unclassified. */

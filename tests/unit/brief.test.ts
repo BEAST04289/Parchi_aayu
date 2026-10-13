@@ -112,4 +112,41 @@ describe('buildBrief', () => {
     const b = buildBrief(bb);
     expect(b.reason.filter((l) => l.check === 'verbatim').map((l) => l.text_hi)).toEqual(['तीन दिन से पेट में जलन है']);
   });
+
+  it('a "denied" allergy whose own sentence has no negation word stays in Attention, pending (D12 regression)', () => {
+    const bb = bundle();
+    bb.sources.push(src({ id: 's4', seq: 4, label: 'p4', doc_type: 'history_note' }));
+    bb.facts.push(fact({ id: 'f10', source_id: 's4', group_key: 's4:g1', kind: 'allergy', value: 'Penicillin', assertion: 'denied', quote: 'Penicillin allergy recorded. Reaction details and reaction date: not recorded.' }));
+    const b = buildBrief(bb);
+    const a = b.attention.find((i) => i.rule_id === 'allergy.recorded@1')!;
+    expect(a.title).toBe('Penicillin allergy mentioned (wording unclear)');
+    expect(a.check).toBe('pending_check');
+    expect(b.attention.find((i) => i.rule_id === 'allergy.class_exposure@1')!.check).toBe('pending_check');
+    expect(b.open.some((l) => l.id === 'denied-f10')).toBe(false);
+  });
+
+  it('"Patient allergy recorded: Penicillin." marked denied is still shown; "No known penicillin allergy" stays a documented negative', () => {
+    const bb = bundle();
+    bb.facts.push(fact({ id: 'f11', source_id: 's1', group_key: 's1:g3', kind: 'allergy', value: 'Penicillin', assertion: 'denied', quote: 'Patient allergy recorded: Penicillin.' }));
+    expect(buildBrief(bb).attention.some((i) => i.id === 'allergy-f11')).toBe(true);
+    const cc = bundle();
+    cc.facts.push(fact({ id: 'f12', source_id: 's1', group_key: 's1:g3', kind: 'allergy', value: 'Penicillin', assertion: 'denied', quote: 'No known penicillin allergy' }));
+    const c = buildBrief(cc);
+    expect(c.attention.some((i) => i.rule_id.startsWith('allergy'))).toBe(false);
+    expect(c.open.some((l) => l.id === 'denied-f12')).toBe(true);
+  });
+
+  it('an uncertain allergy is shown in Attention, pending, never dropped', () => {
+    const bb = bundle();
+    bb.facts.push(fact({ id: 'f13', source_id: 's1', group_key: 's1:g4', kind: 'allergy', value: 'Sulfa', assertion: 'uncertain', quote: 'Sulfa allergy?' }));
+    const a = buildBrief(bb).attention.find((i) => i.id === 'allergy-f13')!;
+    expect(a.check).toBe('pending_check');
+  });
+
+  it('the same words extracted under several kinds from one answer are shown once', () => {
+    const bb = bundle();
+    for (const [i, kind] of (['complaint', 'visit_reason', 'patient_concern'] as const).entries()) bb.facts.push(fact({ id: `r${i}`, source_id: 'a1', group_key: null, kind, value: 'i have chest ache', quote: 'i have chest ache' }));
+    const lines = buildBrief(bb).reason.filter((l) => l.check !== 'verbatim');
+    expect(lines.map((l) => l.text_hi)).toEqual(['i have chest ache']);
+  });
 });

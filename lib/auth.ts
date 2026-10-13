@@ -75,6 +75,49 @@ export async function requireStaff(roles?: StaffRole[]): Promise<StaffSession> {
   return s;
 }
 
+/**
+ * Public demo viewer: a signed cookie {demo_encounter, exp} that grants READ access (brief, rev,
+ * evidence, file) to ONE synthetic encounter only. It is never a staff session: no writes, no other
+ * encounters, no staff routes. Signed with a separate prefix so the two cookies cannot be swapped.
+ */
+export const DEMO_COOKIE = 'parchi_demo';
+const DEMO_HOURS = 6;
+
+export function encodeDemo(encounterId: string): string {
+  const payload = Buffer.from(JSON.stringify({ demo_encounter: encounterId, exp: Date.now() + DEMO_HOURS * 3600_000 }), 'utf8').toString('base64url');
+  return `${payload}.${sign(`demo.${payload}`)}`;
+}
+
+function decodeDemo(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const dot = raw.indexOf('.');
+  if (dot <= 0) return null;
+  const payload = raw.slice(0, dot);
+  const given = Buffer.from(raw.slice(dot + 1), 'utf8');
+  const expected = Buffer.from(sign(`demo.${payload}`), 'utf8');
+  if (given.length !== expected.length || !timingSafeEqual(given, expected)) return null;
+  try {
+    const d = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as { demo_encounter?: string; exp?: number };
+    if (typeof d.exp !== 'number' || d.exp < Date.now() || typeof d.demo_encounter !== 'string') return null;
+    return d.demo_encounter;
+  } catch {
+    return null;
+  }
+}
+
+export function demoCookieOptions(req: Request) {
+  return { ...cookieOptions(req), maxAge: DEMO_HOURS * 3600 };
+}
+
+/** Read-only routes: a staff session, or the demo viewer of exactly this encounter. Anything else is 401. */
+export async function requireStaffOrDemo(encounterId: string | null): Promise<void> {
+  const store = await cookies();
+  if (decodeSession(store.get(SESSION_COOKIE)?.value)) return;
+  const demo = decodeDemo(store.get(DEMO_COOKIE)?.value);
+  if (demo && encounterId && demo === encounterId) return;
+  throw new HttpError(401, 'Staff sign-in required.');
+}
+
 export function staffActor(s: StaffSession): string {
   return `${s.role === 'doctor' ? 'Dr ' : ''}${s.name}`.replace(/^Dr Dr /, 'Dr ');
 }

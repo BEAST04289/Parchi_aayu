@@ -23,7 +23,8 @@ export const LinePageExtraction = z.object({
     group: z.number().int(),
     kind: z.enum(['med_name', 'med_strength', 'med_frequency', 'med_form', 'med_duration', 'allergy', 'allergy_reaction', 'lab_name', 'lab_value', 'lab_unit', 'lab_range']),
     value: z.string(),
-    ocr_line_ids: z.array(z.number().int()),
+    // Bounded: an unbounded array let the 4B model count 0..366 until num_predict cut the JSON off (p1, 13 Oct).
+    ocr_line_ids: z.array(z.number().int().min(0)).max(3),
     illegible: z.boolean(),
     subject: z.enum(['patient', 'other_person', 'unknown']),
     assertion: z.enum(['present', 'denied', 'uncertain']),
