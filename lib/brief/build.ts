@@ -160,6 +160,12 @@ export function buildBrief(b: Bundle, now: Date = new Date()): Brief {
       });
     }
   }
+  const factById = new Map(facts.map((f) => [f.id, f]));
+  for (const i of attention) {
+    const states = i.fact_ids.map((id) => factById.get(id)?.check_state).filter(Boolean) as Fact['check_state'][];
+    if (states.some((s) => s === 'pending_check' || s === 'unreadable')) i.check = 'pending_check';
+    else if (states.length) i.check = states.every((s) => s === states[0]) ? states[0] : 'mixed';
+  }
   for (const s of b.sources.filter((x) => withheld.has(x.id))) {
     attention.push({
       id: `identity-${s.id}`, rule_id: 'doc.identity_mismatch@1', level: 'review', section: 'attention',

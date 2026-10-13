@@ -55,7 +55,7 @@ export async function runVisionOcr(image: Buffer): Promise<{ page: OcrPage; raw:
   const key = process.env.GOOGLE_VISION_API_KEY;
   if (!key) throw new ProviderError('config', 'Processing not run: GOOGLE_VISION_API_KEY is not configured on the server.');
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 25_000);
+  const timer = setTimeout(() => ctrl.abort(), 15_000);
   try {
     const res = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${encodeURIComponent(key)}`, {
       method: 'POST',

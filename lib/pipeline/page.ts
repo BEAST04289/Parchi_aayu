@@ -11,18 +11,22 @@ import { ProviderError } from './errors';
 import type { Encounter, OcrPage, Source } from '../types';
 
 const MAX_PARALLEL = 2;
+/** A claim older than this was killed (e.g. by the platform's maxDuration) and no longer counts. */
+const STALE_INTERVAL = '3 minutes';
 
 /**
- * Claims a page (at most 2 processing per encounter), runs OCR -> extraction -> verifier, and stores
+ * Claims a page (at most 2 fresh claims per encounter), runs OCR -> extraction -> verifier, and stores
  * facts in one transaction together with status 'done'. A failure stores zero facts and a readable
- * error. Then starts the next waiting page of the same encounter.
+ * error. Waiting pages are started by kickQueue(), which the polled endpoints call; nothing chains
+ * inside one invocation, so a killed invocation cannot strand the queue.
  */
 export async function processPage(sourceId: string): Promise<void> {
   const d = await db();
   const claimed = await d.query<Source>(
-    `update sources s set status = 'processing', error = null
+    `update sources s set status = 'processing', error = null, processing_started_at = now()
      where s.id = $1 and s.kind = 'page' and s.status in ('uploaded','failed')
-       and (select count(*) from sources o where o.encounter_id = s.encounter_id and o.status = 'processing') < $2
+       and (select count(*) from sources o where o.encounter_id = s.encounter_id and o.status = 'processing'
+            and o.processing_started_at > now() - interval '${STALE_INTERVAL}') < $2
      returning s.id, s.encounter_id, s.blob_id, s.mime, s.sha256, s.mode, s.label`,
     [sourceId, MAX_PARALLEL],
   );
@@ -92,7 +96,20 @@ export async function processPage(sourceId: string): Promise<void> {
     timings.total_ms = Date.now() - t0;
     await d.query(`update sources set status = 'failed', error = $2, timings = $3 where id = $1`, [src.id, msg, JSON.stringify(timings)]);
   }
+}
 
-  const next = await d.query<{ id: string }>(`select id from sources where encounter_id = $1 and kind = 'page' and status = 'uploaded' order by seq limit 1`, [src.encounter_id]);
+/**
+ * Called (via after()) by endpoints that are polled every 2 s. Marks interrupted claims as failed
+ * (retryable) and starts the oldest waiting page if there is capacity. Duplicate kicks are harmless:
+ * the claim in processPage is atomic.
+ */
+export async function kickQueue(encounterId: string): Promise<void> {
+  const d = await db();
+  await d.query(
+    `update sources set status = 'failed', error = 'Processing was interrupted. Retry.'
+     where encounter_id = $1 and kind = 'page' and status = 'processing' and processing_started_at < now() - interval '${STALE_INTERVAL}'`,
+    [encounterId],
+  );
+  const next = await d.query<{ id: string }>(`select id from sources where encounter_id = $1 and kind = 'page' and status = 'uploaded' order by seq limit 1`, [encounterId]);
   if (next[0]) await processPage(next[0].id);
 }

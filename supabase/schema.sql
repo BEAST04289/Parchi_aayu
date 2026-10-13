@@ -43,6 +43,7 @@ create table if not exists sources (
   mime text,
   sha256 text,
   status text not null default 'uploaded' check (status in ('uploaded','processing','done','failed')),
+  processing_started_at timestamptz,
   error text,
   readability text not null default 'unknown' check (readability in ('unknown','readable','partial','unreadable')),
   identity text not null default 'unchecked' check (identity in ('unchecked','matched','mismatch','confirmed_patient','withheld')),
@@ -68,6 +69,7 @@ create table if not exists sources (
   created_at timestamptz not null default now(),
   unique (encounter_id, seq)
 );
+alter table sources add column if not exists processing_started_at timestamptz;
 -- Same file uploaded twice in one encounter = same source (retries never duplicate facts).
 create unique index if not exists sources_encounter_sha_uniq on sources (encounter_id, sha256) where sha256 is not null;
 

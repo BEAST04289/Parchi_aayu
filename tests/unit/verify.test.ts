@@ -66,6 +66,11 @@ describe('verifyPageItems (OCR and vision cross-check)', () => {
     const r = verifyPageItems([item({ kind: 'med_frequency', value: 'BD', ocr_quote: 'BD' })], ocrOf('Tab Metoprolol 25 mg BD', 0.5), drugs);
     expect(r.kept[0].reasons).toContain('Low OCR confidence');
   });
+  it('"Tab Metoprolol" is recognised for matching only', () => {
+    const r = verifyPageItems([item({ kind: 'med_name', value: 'Tab Metoprolol', ocr_quote: 'Tab Metoprolol' })], ocr, drugs);
+    expect(r.kept[0].check_state).toBe('source_matched');
+    expect(r.kept[0].item.value).toBe('Tab Metoprolol');
+  });
   it('unknown drug and unusual strength are flagged, never rewritten', () => {
     const r = verifyPageItems([item({ kind: 'med_name', value: 'Metopsolol', ocr_quote: 'Metopsolol' })], ocrOf('Metopsolol 25 mg'), drugs);
     expect(r.kept[0]).toMatchObject({ check_state: 'pending_check' });
@@ -104,6 +109,13 @@ describe('checkIdentity (lenient)', () => {
   it('matches the demo pages', () => expect(checkIdentity(enc, { name: 'Ramesh', age: '52 years', id: null })).toBe('matched'));
   it('tolerates small spelling differences', () => expect(checkIdentity(enc, { name: 'Ramesh Kumar', age: '52 M', id: null })).toBe('matched'));
   it('matches by ID', () => expect(checkIdentity(enc, { name: 'R.', age: null, id: 'SYN R52' })).toBe('matched'));
+  it('ignores label words before the name', () => {
+    expect(checkIdentity(enc, { name: 'Name: Ramesh', age: '52', id: null })).toBe('matched');
+    expect(checkIdentity(enc, { name: 'Pt. Ramesh', age: null, id: null })).toBe('matched');
+    expect(checkIdentity(enc, { name: 'Patient: Ramesh Kumar', age: '52 years', id: null })).toBe('matched');
+    expect(checkIdentity(enc, { name: 'Shri Ramesh', age: '52 M', id: null })).toBe('matched');
+  });
+  it('close name but different age is unchecked, never withheld (possible misread)', () => expect(checkIdentity(enc, { name: 'Ramesh', age: '62', id: null })).toBe('unchecked'));
   it('withholds a clearly different person (C11)', () => expect(checkIdentity(enc, { name: 'Sita', age: '34', id: 'SYN-S34' })).toBe('withheld'));
   it('no name -> unchecked, not withheld', () => expect(checkIdentity(enc, { name: null, age: null, id: null })).toBe('unchecked'));
   it('parses ages', () => expect([parseAge('52'), parseAge('52 M'), parseAge('52y'), parseAge('52/M')]).toEqual([52, 52, 52, 52]));

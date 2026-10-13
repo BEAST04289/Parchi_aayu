@@ -7,7 +7,7 @@ import { processPage } from '@/lib/pipeline/page';
 import { HttpError, json, route } from '@/lib/http';
 import type { Source } from '@/lib/types';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 const MAX_BYTES = 4_500_000; // Vercel request-body limit; the kiosk compresses photos well below this.
 const TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 

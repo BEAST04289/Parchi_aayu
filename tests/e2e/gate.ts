@@ -305,11 +305,13 @@ async function main() {
     await item.waitFor({ timeout: 15000 });
     const classLine = await staff.getByTestId('attention').getByText(/Amoxicillin \(a penicillin\)/).textContent();
     const attentionBadge = await staff.getByTestId('attention').getByText('Changed since your review').isVisible();
+    const pendingMarkers = await staff.getByTestId('issue-pending').count();
+    assert(pendingMarkers >= 2, `expected pending markers on attention items built from pending fixture readings, got ${pendingMarkers}`);
     const medsReviewed = await staff.getByTestId('section-medicines').getByText(/Reviewed/).isVisible();
     await staff.screenshot({ path: path.join(SHOTS, 'staff-allergy-reveal-1366x768.png') });
     const b = (await http('GET', `/api/encounters/${encR}/brief`, { cookie: doctorCookie })).data as { sections: Record<string, { stale: boolean }>; review_history: unknown[] };
     assert(attentionBadge && medsReviewed && b.sections.attention.stale && !b.sections.medicines.stale && !b.sections.labs.stale, 'staleness wrong');
-    return `attention shows "${classLine?.trim()}" without clicking the banner; attention stale, medicines/labs still reviewed; review events kept=${b.review_history.length}`;
+    return `attention shows "${classLine?.trim()}" without clicking the banner, each marked "based on a reading pending source check" (${pendingMarkers}); attention stale, medicines/labs still reviewed; review events kept=${b.review_history.length}`;
   });
 
   await check('D2', 'Source chip opens the exact page with page-level label (no invented highlight)', async () => {
@@ -400,6 +402,37 @@ async function main() {
     await offCtx.close();
     assert(msg?.includes('पास के स्टाफ') && noFalse && before === 0 && after === 1, `msg=${msg} noFalse=${noFalse} before=${before} after=${after}`);
     return `offline → "${msg?.trim()}"; no delivered/ack text; alerts before reconnect=${before}; after retry + second press=${after}`;
+  });
+
+  // ---------------- Real kiosk upload path (gallery input -> on-device JPEG compression) ----------------
+  await check('U1', 'Kiosk gallery upload: compressed on device to JPEG < 1 MB, stored privately, same photo twice = one page', async () => {
+    const c = await http('POST', '/api/encounters', { cookie: doctorCookie, json: { patient_name: 'Upload test', patient_age: 45 } });
+    const tok = tokenOf(c.data.kiosk_url as string);
+    const p = await kioskCtx.newPage();
+    await p.goto(c.data.kiosk_url as string);
+    await p.getByRole('button', { name: 'शुरू करें' }).click();
+    await p.getByTestId('answer-input').fill('पुराने पर्चे दिखाने आया हूँ');
+    await p.getByTestId('answer-send').click();
+    await p.getByRole('button', { name: 'सही है' }).click();
+    await p.getByTestId('gallery-input').setInputFiles(path.join('fixtures', 'page-03.png'));
+    const st = await waitFor(async () => {
+      const s2 = await http('GET', `/api/kiosk/${tok}/state`);
+      const pg = (s2.data.pages as { id: string; status: string; error: string }[])[0];
+      return pg && (pg.status === 'failed' || pg.status === 'done') ? pg : null;
+    }, 20000, 'gallery page to settle');
+    const ev = (await http('GET', `/api/sources/${st.id}/evidence`, { cookie: doctorCookie })).data.source as { mime: string };
+    const fileRes = await fetch(`${BASE}/api/sources/${st.id}/file`, { headers: { cookie: doctorCookie } });
+    const size = (await fileRes.arrayBuffer()).byteLength;
+    const original = fs.statSync(path.join('fixtures', 'page-03.png')).size;
+    await p.getByTestId('page-status').first().waitFor();
+    await p.screenshot({ path: path.join(SHOTS, 'kiosk-papers-uploaded-390x844.png') });
+    await p.getByTestId('gallery-input').setInputFiles(path.join('fixtures', 'page-03.png'));
+    await sleep(2500);
+    const pagesAfter = ((await http('GET', `/api/kiosk/${tok}/state`)).data.pages as unknown[]).length;
+    await p.close();
+    assert(ev.mime === 'image/jpeg' && size < 1_000_000, `mime ${ev.mime} size ${size}`);
+    assert(pagesAfter === 1, `second upload of the same photo created ${pagesAfter} pages: on-device compression is not deterministic, so REPLAY of kiosk photos would miss`);
+    return `stored ${ev.mime}, ${size} bytes (original PNG ${original}); page status ${st.status} ("${st.error}"); same photo again → ${pagesAfter} page (compression deterministic in this browser)`;
   });
 
   // ---------------- Kiosk flow, screenshots ----------------

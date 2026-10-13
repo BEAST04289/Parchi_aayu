@@ -26,8 +26,13 @@ export interface VerifyResult { kept: VerifiedItem[]; held_back: { item: Extract
 
 const LOW_CONF = 0.8;
 
+/** Dosage-form words that may precede a drug name ("Tab Metoprolol"). Ignored for matching only. */
+const FORM_WORDS = new Set(['tab', 'tabs', 'tablet', 'cap', 'caps', 'capsule', 'syp', 'syrup', 'inj', 'injection', 'susp']);
+
 export function findDrug(name: string, drugs: DrugEntry[]): DrugEntry | null {
-  const n = normTokens(name).join(' ');
+  const toks = normTokens(name);
+  while (toks.length > 1 && FORM_WORDS.has(toks[0])) toks.shift();
+  const n = toks.join(' ');
   if (!n) return null;
   for (const d of drugs) {
     if (normTokens(d.name).join(' ') === n) return d;

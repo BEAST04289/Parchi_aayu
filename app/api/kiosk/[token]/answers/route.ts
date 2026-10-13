@@ -7,7 +7,7 @@ import { processAnswerText } from '@/lib/speech/answer';
 import { HttpError, json, readJson, route } from '@/lib/http';
 import type { Source } from '@/lib/types';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 /**
  * Typed answer (JSON {text, question_id?, supersedes_id?}). Stored verbatim first; the urgent-word

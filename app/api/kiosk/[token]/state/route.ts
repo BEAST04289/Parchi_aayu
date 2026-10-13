@@ -1,11 +1,16 @@
+import { after } from 'next/server';
 import { encounterByToken } from '@/lib/auth';
+import { kickQueue } from '@/lib/pipeline/page';
 import { db } from '@/lib/db';
 import { json, route } from '@/lib/http';
 import type { Alert, Source } from '@/lib/types';
 
-/** Everything the patient screen needs, scoped to the token's encounter. No staff-only data. */
+export const maxDuration = 120;
+
+/** Everything the patient screen needs, scoped to the token's encounter. No staff-only data. Also nudges the page queue. */
 export const GET = route(async (_req: Request, ctx: { params: Promise<{ token: string }> }) => {
   const enc = await encounterByToken((await ctx.params).token);
+  after(() => kickQueue(enc.id));
   const d = await db();
   const [pages, answers, alerts] = await Promise.all([
     d.query<Pick<Source, 'id' | 'label' | 'status' | 'readability' | 'identity' | 'error' | 'seq'>>(

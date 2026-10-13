@@ -1,9 +1,9 @@
 # Current handoff
 
-**Updated 13 Oct 2026, ~11:35 IST.** Repo: `C:\dev\parchi` (git, local commits only; no remote yet). The OneDrive kit folder is now only a copy; this repo is the source of truth.
+**Updated 13 Oct 2026, ~11:40 IST.** Repo: `C:\dev\parchi` (git, local commits only; no remote yet). The OneDrive kit folder is now only a copy; this repo is the source of truth.
 
 ## Status in one paragraph
-The scaffold gate passes in real Microsoft Edge contexts on a **local PGlite database** (21/21 checks, below). Staff sign in, create an encounter with a QR/kiosk link, the patient types a complaint on a second independent context, it appears on the staff brief via the change banner with its source, and everything survives refresh. Access control, alerts across encounters, offline help, nurse compare-and-swap, doctor review staleness and the page-4 allergy reveal all work **without any AI keys**. Fixture replay data drives those checks. **No live provider call has been made**: Supabase, Google Vision, Claude and Sarvam are all unrun because no credentials exist on this machine.
+The scaffold gate passes in real Microsoft Edge contexts on a **local PGlite database** (22/22 checks, below). Staff sign in, create an encounter with a QR/kiosk link, the patient types a complaint on a second independent context, it appears on the staff brief via the change banner with its source, and everything survives refresh. Access control, alerts across encounters, offline help, nurse compare-and-swap, doctor review staleness and the page-4 allergy reveal all work **without any AI keys**. Fixture replay data drives those checks. **No live provider call has been made**: Supabase, Google Vision, Claude and Sarvam are all unrun because no credentials exist on this machine.
 
 ## Missing credentials (exact)
 | Variable | Needed for | Where |
@@ -35,15 +35,16 @@ With `DATABASE_URL` set: run `npm run db:migrate` once, then the same commands. 
 - **Pipeline (code complete, not run live):**
   - `lib/pipeline/ocr.ts` calls Vision over REST and normalizes words, boxes and confidence.
   - `extract.ts` uses `messages.parse` + `zodOutputFormat`. Refusal, `max_tokens` or a null parse produce a visible failure.
-  - `page.ts` claims at most 2 pages per encounter, inserts facts in one transaction with `done`, stores zero facts on failure with a readable error, upserts the replay row on LIVE success, and in REPLAY uses the exact sha256 only. Processing runs in `after()`; locally this was observed working (P1 below).
+  - `page.ts` claims at most 2 pages per encounter (only claims younger than 3 minutes count), inserts facts in one transaction with `done`, stores zero facts on failure with a readable error, upserts the replay row on LIVE success, and in REPLAY uses the exact sha256 only. Processing runs in `after()`; locally this was observed working (P1 below).
+  - Waiting pages are started by `kickQueue()`, which the polled endpoints call (kiosk state, staff rev). It also marks claims older than 3 minutes as failed ("Processing was interrupted. Retry."), so a killed invocation cannot strand the queue. Provider budget: Vision 15 s + Claude 75 s (no SDK retry) inside `maxDuration = 120`.
   - Verifier: `lib/verify/page.ts` (OCR and vision cross-check; decimals protected; whole-token agreement; low confidence, unknown drug and unusual strength become `pending_check`; another person's facts are held back).
-  - Also: deterministic dates (`assumed DD/MM` label) and lenient identity matching.
+  - Also: deterministic dates (`assumed DD/MM` label) and lenient identity matching. Label words ("Name:", "Pt.", "Shri") are ignored, a close name with a different age gives `unchecked` (never withheld), and only a clearly different name withholds. `findDrug` ignores leading form words ("Tab", "Cap") for matching only; the value is never rewritten.
 - **Brief:** `lib/brief/build.ts`, a pure function. It produces:
   - reason for visit (verbatim patient words + extracted facts)
   - medicines (documented by date, with each field's own source chip, BD/TDS expansion only, strength-change flag)
   - labs (report-range status only when the units match exactly)
   - dated timeline + undated bucket
-  - attention (allergy recorded, penicillin/sulfa class exposure "for clinician review; current use unknown", identity withheld)
+  - attention (allergy recorded, penicillin/sulfa class exposure "for clinician review; current use unknown", identity withheld). Each item carries the weakest check state of its supporting facts and shows "⚠ based on a reading pending source check" when applicable
   - open lines (pending checks, failed pages, denied allergy as a documented negative)
   - citation-coverage ledger
   - section hashes over clinical content only, plus a separate `live_hash`
@@ -65,13 +66,13 @@ With `DATABASE_URL` set: run `npm run db:migrate` once, then the same commands. 
 ## Commands actually run and observed results (13 Oct, local Windows, Node 24.11.1, Edge via playwright-core 1.64)
 - `npm run typecheck` (next typegen + tsc): pass.
 - `npx eslint .`: 0 problems.
-- `npx vitest run`: **45/45 pass** (synthetic inputs). Covered:
+- `npx vitest run`: **50/50 pass** (synthetic inputs). Covered:
   - normalization, including Devanagari
   - the verifier: 25≠250, 12.5≠125, BD≠8D, 50mg=50 mg, missing quote, low confidence, unknown drug, other-person allergy, invalid boxes giving page-level evidence
-  - dates (C06), identity (C11), lab ranges (C07, comparators, unit mismatch), urgent words
-  - the brief: verbatim complaint, grouping and dating, pending visibility, stable hashes, C13 staleness, C01 negation, withheld page, corrected answer
+  - dates (C06), identity (C11, label prefixes, age-only mismatch), "Tab Metoprolol" matching, lab ranges (C07, comparators, unit mismatch), urgent words
+  - the brief: verbatim complaint, grouping and dating, pending visibility, pending marker on attention items, stable hashes, C13 staleness, C01 negation, withheld page, corrected answer
 - `npm run build` (Next 16.4.0, Turbopack): pass.
-- `npm run test:gate` against `next start` + PGlite: **21/21 pass** (`test-results/gate-report.json`):
+- `npm run test:gate` against `next start` + PGlite: **22/22 pass** (`test-results/gate-report.json`):
 
 | ID | Check | Observed |
 | --- | --- | --- |
@@ -89,11 +90,12 @@ With `DATABASE_URL` set: run `npm run db:migrate` once, then the same commands. 
 | R2 | REPLAY of p1, p3, p5 | Metoprolol 25 mg (14 Aug) → 50 mg (04 Sep) flag; all readings `pending_check` (page-level); mode `replay` |
 | N1 | Two concurrent corrections (nurse + doctor) | One 200 + one 409; stale resubmit 409 "Already updated by Priya at …"; both revisions stored |
 | N2 | Patient writes a review / nurse records a doctor review | 401 / 401 / 403 |
-| D1 | Mark reviewed → page 4 arrives | Allergy + "Amoxicillin (a penicillin) was prescribed 10 Sep 2026 · Clinic C" appear without clicking the banner; attention stale; medicines/labs still reviewed; review event kept |
+| D1 | Mark reviewed → page 4 arrives | Allergy + "Amoxicillin (a penicillin) was prescribed 10 Sep 2026 · Clinic C" appear without clicking the banner, each marked "based on a reading pending source check"; attention stale; medicines/labs still reviewed; review event kept |
 | D2 | Allergy source chip | Opens the history-note page with "Page-level evidence" and no highlight box |
 | A1 | Doctor on D1, patient D4 presses help | Alert bar for D4 while on D1; kiosk shows "delivered" text before ack and "स्टाफ ने आपका अनुरोध देख लिया है" after; repeat press keeps 1 open alert; no "staff coming"; resume returns the kiosk to intake |
 | A2 | Typed "अभी सीने में तेज दर्द हो रहा है।" | Paused, staff alert; completing while paused → 409 |
 | A3 | Help while offline | Nearby-staff message; no delivered/ack text; 0 alerts before reconnect, 1 after retry + second press |
+| U1 | Real kiosk gallery upload (`setInputFiles` → `createImageBitmap` → canvas JPEG) | Stored `image/jpeg`, 62,922 bytes; same photo uploaded again through the UI → still 1 page (compression was deterministic in Edge, so REPLAY of kiosk photos can match) |
 | K1 | Skip papers, finish | Done message after save; no horizontal overflow at 390 px |
 | V1 | Staff at 1366×768 and 768×1024 | No horizontal page overflow |
 
@@ -103,6 +105,7 @@ Screenshots (actual running screens) are in `test-results/screens/` (gitignored)
 - Supabase Postgres (no `DATABASE_URL`). Concurrency was tested on PGlite, which serializes queries. The compare-and-swap logic (conditional update + unique `supersedes_id`) has **not** been exercised under real Postgres concurrency.
 - Google Vision OCR, Claude page extraction, Claude transcript extraction: code paths compile against the installed SDK types (`messages.parse`, `zodOutputFormat`, `output_config.effort`) but have **never been called**. No latency, accuracy or schema-compile timings exist yet.
 - Sarvam STT/TTS, the microphone, phone over HTTPS, Vercel deployment (including `after()` on Vercel), handwritten pages.
+- Interrupted-claim recovery (`kickQueue` marking 3-minute-old claims failed) is implemented but untested: no test kills an invocation. `maxDuration = 120` assumes the Vercel plan allows it; check the project settings. Compression determinism was checked in desktop Edge only, not on the demo phone.
 - The fixture replay rows are hand-authored from `fixtures/gold.json`, not recorded outputs. They carry no word positions, so every replayed reading is page-level and pending. They are not evidence of extraction accuracy.
 
 ## Deviations from PLAN.md (reason → effect on the demo)

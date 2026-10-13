@@ -16,12 +16,16 @@ export function parseAge(s: string | null | undefined): number | null {
   return m ? Number(m[1]) : null;
 }
 
-const firstName = (s: string) => s.toLowerCase().replace(/^(mr|mrs|ms|shri|smt|sri)\.?\s+/, '').match(/\p{L}[\p{L}\p{M}]*/u)?.[0] ?? '';
+/** Label words and honorifics that are not part of anyone's name. */
+const NOT_NAME = new Set(['name', 'patient', 'pt', 'mr', 'mrs', 'ms', 'shri', 'sri', 'smt', 'master', 'baby', 'kumari', 'km', 'age', 'sex', 'm', 'f']);
+const nameTokens = (s: string) => (s.toLowerCase().match(/\p{L}[\p{L}\p{M}]*/gu) ?? []).filter((t) => !NOT_NAME.has(t) && t.length > 1);
 
 /**
  * Lenient by design (PLAN.md §3): it must never withhold the patient's own pages.
- * matched: ID matches, or first names close (edit distance <= 2 or prefix) with age within ±1 when both known.
- * withheld: a name is present and clearly different (or the age clearly differs). No name: unchecked.
+ * matched: ID matches, or a name token is close to the encounter's first name (edit distance <= 2 or
+ * prefix) and the ages agree within ±1 when both are known.
+ * unchecked: no readable name, or the name is close but the age differs (possible misread; not withheld).
+ * withheld: a name is present and NO name token is close to the encounter's name ("Sita" vs "Ramesh").
  */
 export function checkIdentity(
   enc: Pick<Encounter, 'patient_name' | 'patient_age' | 'patient_ref'>,
@@ -29,12 +33,12 @@ export function checkIdentity(
 ): Source['identity'] {
   const norm = (x: string) => x.replace(/[^a-z0-9]/gi, '').toLowerCase();
   if (doc.id && enc.patient_ref && norm(doc.id) === norm(enc.patient_ref)) return 'matched';
-  if (!doc.name || !doc.name.trim()) return 'unchecked';
-  const a = firstName(doc.name), b = firstName(enc.patient_name);
-  if (!a || !b) return 'unchecked';
-  const close = editDistance(a, b) <= 2 || a.startsWith(b) || b.startsWith(a);
+  const docTokens = doc.name ? nameTokens(doc.name) : [];
+  const encFirst = nameTokens(enc.patient_name)[0];
+  if (docTokens.length === 0 || !encFirst) return 'unchecked';
+  const close = docTokens.some((a) => editDistance(a, encFirst) <= 2 || a.startsWith(encFirst) || encFirst.startsWith(a));
   if (!close) return 'withheld';
   const docAge = parseAge(doc.age);
-  if (docAge !== null && enc.patient_age !== null && Math.abs(docAge - enc.patient_age) > 1) return 'withheld';
+  if (docAge !== null && enc.patient_age !== null && Math.abs(docAge - enc.patient_age) > 1) return 'unchecked';
   return 'matched';
 }

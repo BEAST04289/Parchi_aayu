@@ -266,6 +266,7 @@ function IssueRow({ i, onOpen }: { i: Issue; onOpen: OpenSource }) {
     <div className={clsx('rounded-md border px-3 py-2', red ? 'border-red bg-red-soft text-red' : 'border-amber bg-amber-soft text-amber')} data-testid="attention-item">
       <strong>{i.level === 'allergy' ? 'Allergy' : i.level === 'urgent' ? 'Urgent' : 'Check'} · {i.title}</strong>
       <span className="ml-1">{i.detail}</span>
+      {i.check === 'pending_check' && <span className="ml-2 rounded bg-amber-soft px-1.5 py-0.5 text-[13px] font-medium text-amber" data-testid="issue-pending">⚠ based on a reading pending source check</span>}
       <span className="ml-2 inline-flex gap-1">{i.refs.map((r) => <SourceChip key={r.source_id} r={r} onOpen={onOpen} factId={r.fact_ids[0] ?? null} />)}</span>
     </div>
   );

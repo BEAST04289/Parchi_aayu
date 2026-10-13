@@ -32,7 +32,7 @@ export interface Encounter {
 export interface Source {
   id: string; encounter_id: string; kind: 'page' | 'clip' | 'typed'; seq: number; label: string;
   blob_id: string | null; mime: string | null; sha256: string | null;
-  status: 'uploaded' | 'processing' | 'done' | 'failed'; error: string | null;
+  status: 'uploaded' | 'processing' | 'done' | 'failed'; processing_started_at: string | null; error: string | null;
   readability: 'unknown' | 'readable' | 'partial' | 'unreadable';
   identity: 'unchecked' | 'matched' | 'mismatch' | 'confirmed_patient' | 'withheld';
   mode: Mode; model: string | null; timings: Record<string, number> | null; ocr: OcrPage | null;
@@ -84,6 +84,8 @@ export interface StaffAlert extends Alert { alias: string; patient_name: string 
 export interface Issue {
   id: string; rule_id: string; level: 'urgent' | 'allergy' | 'review' | 'info'; section: SectionKey;
   title: string; detail: string; fact_ids: string[]; refs: SourceRef[];
+  /** Weakest check state of the supporting facts: a safety concern built on a pending reading says so. */
+  check?: CheckState | 'mixed';
 }
 export interface SourceRef { source_id: string; label: string; fact_ids: string[] }
 

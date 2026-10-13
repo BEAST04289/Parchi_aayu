@@ -46,7 +46,8 @@ function effort(): 'low' | 'medium' | 'high' {
 
 function client(): Anthropic {
   if (!process.env.ANTHROPIC_API_KEY) throw new ProviderError('config', 'Processing not run: ANTHROPIC_API_KEY is not configured on the server.');
-  return new Anthropic({ timeout: 50_000, maxRetries: 1 });
+  // Budget: Vision 15 s + Claude 75 s stays inside maxDuration 120 on the processing routes.
+  return new Anthropic({ timeout: 75_000, maxRetries: 0 });
 }
 
 function mapError(e: unknown): never {

@@ -4,7 +4,7 @@ import { getSource } from '@/lib/repo';
 import { processPage } from '@/lib/pipeline/page';
 import { assertUuid, HttpError, json, route } from '@/lib/http';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export const POST = route(async (_req: Request, ctx: { params: Promise<{ id: string }> }) => {
   await requireStaff();

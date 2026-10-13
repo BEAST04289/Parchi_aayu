@@ -5,7 +5,7 @@ import { newKioskToken } from './auth';
 import type { Alert, AppEvent, Encounter, Fact, Question, Source, StaffAlert } from './types';
 
 /** Source columns without the (large) OCR payload. */
-export const SOURCE_COLS = `id, encounter_id, kind, seq, label, blob_id, mime, sha256, status, error, readability, identity,
+export const SOURCE_COLS = `id, encounter_id, kind, seq, label, blob_id, mime, sha256, status, processing_started_at, error, readability, identity,
   mode, model, timings, null::jsonb as ocr, doc_type, clinic, doc_date, name_on_doc, age_on_doc, id_on_doc, width, height,
   question_id, typed_text, transcript_hi, transcript_en, translation_by, duration_ms, supersedes_id, created_at`;
 

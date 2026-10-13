@@ -1,4 +1,4 @@
-> **Current state:** the scaffold and the keyless parts of A1/B/C are implemented and gate-tested (21/21 on local PGlite). Read `docs/HANDOFF.md` first. `lib/types.ts` is the contract. Staff sessions are HMAC-signed cookies; open alerts are polled for all encounters; section hashes exclude timestamps and alert status; the ledger is citation coverage only.
+> **Current state:** the scaffold and the keyless parts of A1/B/C are implemented and gate-tested (22/22 on local PGlite). Read `docs/HANDOFF.md` first. `lib/types.ts` is the contract. Staff sessions are HMAC-signed cookies; open alerts are polled for all encounters; section hashes exclude timestamps and alert status; the ledger is citation coverage only.
 
 # Parchi project instructions
 

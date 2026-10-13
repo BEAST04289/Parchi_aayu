@@ -5,7 +5,7 @@ import type { Bundle } from '@/lib/repo';
 import type { AppEvent, Encounter, Fact, Source } from '@/lib/types';
 
 const enc: Encounter = { id: 'e1', token: 't'.repeat(24), alias: 'D1', patient_name: 'Ramesh', patient_age: 52, patient_ref: 'SYN-R52', language: 'hi', voice_consent: null, mode: 'live', status: 'intake', intake_started_at: null, intake_completed_at: null, created_at: '2026-10-13T05:00:00.000Z' };
-const src = (o: Partial<Source>): Source => ({ id: 's', encounter_id: 'e1', kind: 'page', seq: 1, label: 'p1', blob_id: 'b', mime: 'image/jpeg', sha256: 'x', status: 'done', error: null, readability: 'readable', identity: 'matched', mode: 'live', model: 'm', timings: null, ocr: null, doc_type: 'prescription', clinic: 'Clinic A', doc_date: { raw: '14 Aug 2026', iso: '2026-08-14', precision: 'day' }, name_on_doc: 'Ramesh', age_on_doc: '52', id_on_doc: null, width: 1, height: 1, question_id: null, typed_text: null, transcript_hi: null, transcript_en: null, translation_by: null, duration_ms: null, supersedes_id: null, created_at: '2026-10-13T05:01:00.000Z', ...o });
+const src = (o: Partial<Source>): Source => ({ id: 's', encounter_id: 'e1', kind: 'page', seq: 1, label: 'p1', blob_id: 'b', mime: 'image/jpeg', sha256: 'x', status: 'done', processing_started_at: null, error: null, readability: 'readable', identity: 'matched', mode: 'live', model: 'm', timings: null, ocr: null, doc_type: 'prescription', clinic: 'Clinic A', doc_date: { raw: '14 Aug 2026', iso: '2026-08-14', precision: 'day' }, name_on_doc: 'Ramesh', age_on_doc: '52', id_on_doc: null, width: 1, height: 1, question_id: null, typed_text: null, transcript_hi: null, transcript_en: null, translation_by: null, duration_ms: null, supersedes_id: null, created_at: '2026-10-13T05:01:00.000Z', ...o });
 const fact = (o: Partial<Fact>): Fact => ({ id: 'f', encounter_id: 'e1', source_id: 's1', group_key: 's1:g1', kind: 'med_name', value: 'Metoprolol', value_en: null, quote: 'Metoprolol', anchor: { boxes: [[0.1, 0.1, 0.2, 0.2]] }, evidence: 'box', check_state: 'source_matched', reasons: [], subject: 'patient', assertion: 'present', temporality: 'historical', supersedes_id: null, superseded_by: null, created_by: 'system', created_at: '2026-10-13T05:02:00.000Z', ...o });
 
 function bundle(extra: Partial<Bundle> = {}): Bundle {
@@ -70,10 +70,27 @@ describe('buildBrief', () => {
     expect(after.attention.map((i) => i.rule_id)).toEqual(['allergy.recorded@1', 'allergy.class_exposure@1']);
     expect(after.attention[0].detail).toContain('Reaction not recorded');
     expect(after.attention[1].detail).toContain('For clinician review; current use unknown');
+    expect(after.attention[0].check).toBe('source_matched');
     expect(after.sections.attention.stale).toBe(true);
     expect(after.sections.medicines.stale).toBe(false);
     expect(after.sections.labs.stale).toBe(false);
     expect(after.review_history).toHaveLength(1);
+  });
+  it('a safety concern built on a pending reading is marked pending', () => {
+    const bb = bundle();
+    bb.sources.push(src({ id: 's4', seq: 7, label: 'p4', doc_type: 'history_note' }));
+    bb.facts.push(fact({ id: 'f9', source_id: 's4', group_key: 's4:g1', kind: 'allergy', value: 'Penicillin', check_state: 'pending_check', reasons: ['Low OCR confidence'] }));
+    const b = buildBrief(bb);
+    expect(b.attention.find((i) => i.rule_id === 'allergy.recorded@1')!.check).toBe('pending_check');
+    expect(b.attention.find((i) => i.rule_id === 'allergy.class_exposure@1')!.check).toBe('pending_check');
+  });
+  it('"Tab Metoprolol" groups with "Metoprolol" without rewriting the value', () => {
+    const bb = bundle();
+    bb.facts[3] = { ...bb.facts[3], value: 'Tab Metoprolol' };
+    const b = buildBrief(bb);
+    const met = b.medicines.find((r) => r.key === 'metoprolol')!;
+    expect(met.documented).toHaveLength(2);
+    expect(met.documented[1].fields.find((f) => f.kind === 'med_name')!.value).toBe('Tab Metoprolol');
   });
   it('withheld pages contribute no facts and raise an identity check (C11)', () => {
     const bb = bundle();
