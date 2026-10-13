@@ -4,7 +4,7 @@ Parchi turns a patient's own words (Hindi-first kiosk) and their scattered presc
 
 ## Live demo (no login)
 
-**https://internet-border-musical-meditation.trycloudflare.com/demo** (temporary Cloudflare Quick Tunnel to the team laptop; works while the laptop and tunnel are running.)
+**https://irrigation-village-likewise-theft.trycloudflare.com/demo** (temporary Cloudflare Quick Tunnel to the team laptop; works while the laptop and tunnel are running.)
 
 What a judge can do there, read-only:
 - See Ramesh, 52 (fictional): an **Attention** strip (penicillin allergy recorded; amoxicillin, a penicillin, prescribed 10 Sep), reason for visit in the patient's own Hindi words, a medicine table with a documented strength change (Metoprolol 25 mg → 50 mg), labs against the report's own range, a dated history and the open questions.
@@ -48,8 +48,8 @@ Reproduce: start the stack, then `npx tsx --env-file=.env.local --conditions=rea
 - The public `/demo` patient (D16) is fixture replay; LIVE processing is shown by signing in and uploading (about 90 s per page on this laptop, first page slower).
 - Qwen3-VL 4B is unreliable on some pages: wrong subject/assertion (Rx B), missed fields (L3), and lab/drug names it reads from the image but cites the wrong OCR lines for (pending). All of these stay visible as pending or held back; none become source-matched.
 - Lab ranges printed without a unit are shown as "not classified" (units must match exactly).
-- **Voice is not implemented in the kiosk.** The server route and local Whisper client exist, but the Whisper model weights are not on this laptop and no Record/Stop UI exists. Typing only.
-- Not run: Supabase Postgres, Vercel, Sarvam, phone over HTTPS.
+- **Voice answers (kiosk):** Record/Stop up to 25 s, listen, send; local Whisper (faster-whisper small, CPU) transcript shown for the patient to confirm, edit or re-record; the doctor sees it tagged "transcript of recording" with the original audio. Tested 8/8 through the public HTTPS link with a synthetic **English** clip on a fake microphone (13-23 s from send to transcript). **Hindi accuracy has not been measured** and needs a real speaker; Whisper misheard "25 milligram" as "25 ml" in one run, which is why the patient confirms.
+- Not run: Supabase Postgres, Vercel, Sarvam, a real Hindi voice recording, a physical phone.
 
 ---
 
