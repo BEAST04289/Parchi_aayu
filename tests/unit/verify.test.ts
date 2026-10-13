@@ -35,7 +35,8 @@ describe('verifyPageItems (OCR and vision cross-check)', () => {
     const r = verifyPageItems([nameItem, item({ value: '25 mg', ocr_quote: 'Metoprolol 25 mg' })], ocr, drugs);
     expect(r.kept.map((k) => k.check_state)).toEqual(['source_matched', 'source_matched']);
     expect(r.kept[1].evidence).toBe('box');
-    expect(r.kept[1].boxes[0][0]).toBeCloseTo(0.05);
+    expect(r.kept[1].precision).toBe('word');
+    expect(r.kept[1].boxes[0][0]).toBeCloseTo(0.10); // narrowed to the '25' 'mg' words, not the whole quote
   });
   it('25 vs 250 -> pending (no fuzzy numbers)', () => {
     const r = verifyPageItems([nameItem, item({ value: '250 mg', ocr_quote: 'Metoprolol 25 mg' })], ocr, drugs);

@@ -250,7 +250,7 @@ function Line({ l, onOpen }: { l: BriefLine; onOpen: OpenSource }) {
   return (
     <div className="mb-2 flex flex-wrap items-baseline gap-2" data-testid="brief-line">
       {l.text_hi && l.text_hi !== l.text ? (
-        <span><span className="deva text-[18px]" lang="hi">“{l.text_hi}”</span> <span className="text-[15px] text-ink-2">{l.text}{l.text_en_by ? ` (${l.text_en_by === 'sarvam' ? 'Sarvam' : 'AI'} translation)` : ''}</span></span>
+        <span><span className="deva text-[18px]" lang="hi">“{l.text_hi}”</span> <span className="text-[15px] text-ink-2">{l.text}{l.text_en_by ? ` (${l.text_en_by === 'sarvam' ? 'Sarvam' : l.text_en_by === 'whisper' ? 'Whisper, local' : 'AI'} translation)` : ''}</span></span>
       ) : (
         <span className={clsx(l.check === 'verbatim' ? 'deva text-[18px]' : 'text-[16px]')} lang={l.check === 'verbatim' ? 'hi' : undefined}>{l.check === 'verbatim' ? `“${l.text}”` : l.text}</span>
       )}

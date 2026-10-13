@@ -19,12 +19,15 @@ export interface VerifiedItem {
   check_state: CheckState;
   evidence: 'box' | 'page';
   boxes: [number, number, number, number][];
+  /** 'word': the box covers only the value's own OCR words; 'line': it covers the cited text/line. */
+  precision: 'word' | 'line' | null;
   reasons: string[];
 }
 
 export interface VerifyResult { kept: VerifiedItem[]; held_back: { item: ExtractedItem; reason: string }[] }
 
-const LOW_CONF = 0.8;
+/** Default only; callers pass a provider-specific (provisional, uncalibrated) threshold. */
+const DEFAULT_LOW_CONF = 0.8;
 
 /** Dosage-form words that may precede a drug name ("Tab Metoprolol"). Ignored for matching only. */
 const FORM_WORDS = new Set(['tab', 'tabs', 'tablet', 'cap', 'caps', 'capsule', 'syp', 'syrup', 'inj', 'injection', 'susp']);
@@ -71,7 +74,8 @@ function validBox(b: unknown): b is [number, number, number, number] {
  * with a reason. The dictionary only raises flags; it never rewrites a value. A match means the
  * source text supports the reading, not that the interpretation is clinically correct.
  */
-export function verifyPageItems(items: ExtractedItem[], ocr: OcrPage | null, drugs: DrugEntry[]): VerifyResult {
+export function verifyPageItems(items: ExtractedItem[], ocr: OcrPage | null, drugs: DrugEntry[], opts: { lowConf?: number } = {}): VerifyResult {
+  const lowConf = opts.lowConf ?? DEFAULT_LOW_CONF;
   const kept: VerifiedItem[] = [];
   const held_back: VerifyResult['held_back'] = [];
   const stream = ocr ? ocrTokenStream(ocr) : { tokens: [] as string[], wordOf: [] as number[] };
@@ -84,6 +88,7 @@ export function verifyPageItems(items: ExtractedItem[], ocr: OcrPage | null, dru
     const reasons: string[] = [];
     let evidence: 'box' | 'page' = 'page';
     let boxes: [number, number, number, number][] = [];
+    let precision: VerifiedItem['precision'] = null;
     const quoteTokens = item.ocr_quote ? normTokens(item.ocr_quote) : [];
     const at = quoteTokens.length ? findRun(stream.tokens, quoteTokens) : -1;
 
@@ -93,16 +98,32 @@ export function verifyPageItems(items: ExtractedItem[], ocr: OcrPage | null, dru
       const wordIdx = [...new Set(stream.wordOf.slice(at, at + quoteTokens.length))];
       const words = wordIdx.map((i) => ocr.words[i]);
       const wordBoxes = words.map((w) => w.box).filter(validBox);
+      const valueTokens = normTokens(item.value);
+      const quoteSet = new Set(quoteTokens);
+      const supported = valueTokens.length > 0 && valueTokens.every((t) => quoteSet.has(t));
       if (wordBoxes.length === words.length && wordBoxes.length > 0) {
-        boxes = [unionBox(wordBoxes)];
         evidence = 'box';
+        boxes = [unionBox(wordBoxes)];
+        precision = 'line';
+        // Narrow to the value's own words only when it occurs exactly once inside the quote and those
+        // words are word-level entries; repeated tokens ("mg ... mg") keep the honest wider box.
+        const span = quoteTokens;
+        const hits: number[] = [];
+        for (let k = 0; k + valueTokens.length <= span.length; k++) if (valueTokens.every((t, j) => span[k + j] === t)) hits.push(k);
+        if (supported && hits.length === 1) {
+          const vIdx = [...new Set(stream.wordOf.slice(at + hits[0], at + hits[0] + valueTokens.length))];
+          const vWords = vIdx.map((i) => ocr.words[i]);
+          if (vWords.every((w) => w.level !== 'line' && validBox(w.box))) {
+            boxes = [unionBox(vWords.map((w) => w.box))];
+            precision = 'word';
+          }
+        }
+        if (words.some((w) => w.level === 'line')) precision = 'line';
       } else {
         reasons.push('OCR text matched but its position could not be validated (page-level evidence)');
       }
-      const valueTokens = normTokens(item.value);
-      const quoteSet = new Set(quoteTokens);
-      if (!valueTokens.every((t) => quoteSet.has(t))) reasons.push(`OCR reads '${item.ocr_quote}', AI reads '${item.value}'`);
-      if (words.some((w) => typeof w.conf === 'number' && w.conf < LOW_CONF)) reasons.push('Low OCR confidence');
+      if (!supported) reasons.push(`OCR reads '${item.ocr_quote}', AI reads '${item.value}'`);
+      if (words.some((w) => typeof w.conf === 'number' && w.conf < lowConf)) reasons.push('Low OCR confidence');
     }
     if (item.illegible) reasons.push('AI marked this hard to read');
 
@@ -116,7 +137,7 @@ export function verifyPageItems(items: ExtractedItem[], ocr: OcrPage | null, dru
       }
     }
 
-    kept.push({ item: item as VerifiedItem['item'], check_state: reasons.length ? 'pending_check' : 'source_matched', evidence, boxes, reasons });
+    kept.push({ item: item as VerifiedItem['item'], check_state: reasons.length ? 'pending_check' : 'source_matched', evidence, boxes, precision, reasons });
   }
   return { kept, held_back };
 }

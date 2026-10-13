@@ -65,7 +65,8 @@ async function createSupabaseDb(url: string): Promise<Db> {
 
 async function createLocalDb(): Promise<Db> {
   const { PGlite } = await import('@electric-sql/pglite');
-  const dir = path.join(process.cwd(), '.data', 'pglite');
+  // PGLITE_DIR lets a second local instance (e.g. the test gate) use its own database folder.
+  const dir = process.env.PGLITE_DIR ? path.resolve(process.env.PGLITE_DIR) : path.join(process.cwd(), '.data', 'pglite');
   fs.mkdirSync(dir, { recursive: true });
   const pg: PGliteT = new PGlite(dir);
   await pg.waitReady;

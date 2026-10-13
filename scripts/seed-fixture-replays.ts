@@ -53,7 +53,7 @@ async function main() {
     await c.end();
   } else {
     const { PGlite } = await import('@electric-sql/pglite');
-    const dir = path.join(root, '.data', 'pglite');
+    const dir = process.env.PGLITE_DIR ? path.resolve(process.env.PGLITE_DIR) : path.join(root, '.data', 'pglite');
     fs.mkdirSync(dir, { recursive: true });
     const db = new PGlite(dir);
     await db.exec(fs.readFileSync(path.join(root, 'supabase/schema.sql'), 'utf8'));

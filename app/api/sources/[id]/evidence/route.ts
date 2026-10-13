@@ -29,6 +29,7 @@ export const GET = route(async (_req: Request, ctx: { params: Promise<{ id: stri
       identity: s.identity, name_on_doc: s.name_on_doc, readability: s.readability, width: s.width, height: s.height,
       typed_text: s.typed_text, transcript_hi: s.transcript_hi, transcript_en: s.transcript_en, translation_by: s.translation_by,
       created_at: s.created_at, has_file: !!s.blob_id, file_url: s.blob_id ? `/api/sources/${s.id}/file` : null,
+      provider_info: s.provider_info, highlight: 'word',
     },
     facts: facts.map((f) => ({ id: f.id, kind: f.kind, value: f.value, value_en: f.value_en, quote: f.quote, anchor: f.anchor, evidence: f.evidence, check_state: f.check_state, reasons: f.reasons, created_by: f.created_by, created_at: f.created_at, supersedes_id: f.supersedes_id, superseded_by: f.superseded_by })),
     history: chain,

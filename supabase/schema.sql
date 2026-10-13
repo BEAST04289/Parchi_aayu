@@ -44,6 +44,8 @@ create table if not exists sources (
   sha256 text,
   status text not null default 'uploaded' check (status in ('uploaded','processing','done','failed')),
   processing_started_at timestamptz,
+  claim_id uuid,
+  provider_info jsonb,
   error text,
   readability text not null default 'unknown' check (readability in ('unknown','readable','partial','unreadable')),
   identity text not null default 'unchecked' check (identity in ('unchecked','matched','mismatch','confirmed_patient','withheld')),
@@ -63,13 +65,17 @@ create table if not exists sources (
   typed_text text,
   transcript_hi text,
   transcript_en text,
-  translation_by text check (translation_by in ('sarvam','claude')),
+  translation_by text,
   duration_ms int,
   supersedes_id uuid references sources(id),
   created_at timestamptz not null default now(),
   unique (encounter_id, seq)
 );
 alter table sources add column if not exists processing_started_at timestamptz;
+alter table sources add column if not exists claim_id uuid;
+alter table sources add column if not exists provider_info jsonb;
+-- Older databases had a check limited to sarvam/claude; local Whisper renderings are allowed now.
+alter table sources drop constraint if exists sources_translation_by_check;
 -- Same file uploaded twice in one encounter = same source (retries never duplicate facts).
 create unique index if not exists sources_encounter_sha_uniq on sources (encounter_id, sha256) where sha256 is not null;
 

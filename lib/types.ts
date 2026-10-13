@@ -18,8 +18,14 @@ export type StaffRole = 'nurse' | 'doctor';
 
 export interface DocDate { raw: string | null; iso: string | null; precision: 'day' | 'month' | 'year' | 'unknown'; assumed_dmy?: boolean }
 /** Box is normalized 0..1 [left, top, right, bottom]. start/end are char offsets into OcrPage.text. */
-export interface OcrWord { i: number; text: string; conf: number; box: [number, number, number, number]; start: number; end: number }
-export interface OcrPage { text: string; words: OcrWord[]; width: number | null; height: number | null }
+/** level 'line': this entry is a whole OCR line (the engine gave no alignable word boxes); its box is line-precise, not word-precise. */
+export interface OcrWord { i: number; text: string; conf: number; box: [number, number, number, number]; start: number; end: number; level?: 'word' | 'line' }
+/** granularity 'line': each OcrWord is a whole OCR text line with its real line box (PaddleOCR). */
+export interface OcrPage { text: string; words: OcrWord[]; width: number | null; height: number | null; granularity?: 'word' | 'line' }
+
+/** What actually ran for one processing step. Recorded on every source. */
+export interface ProviderStep { provider: string; model: string; mode: 'local' | 'cloud' | 'replay'; ms: number; inference_ms?: number; cold?: boolean; error?: string }
+export interface ProviderInfo { ocr?: ProviderStep; extract?: ProviderStep; extract_fallback_from?: ProviderStep; asr?: ProviderStep; translate?: ProviderStep }
 
 export interface Encounter {
   id: string; token: string; alias: string;
@@ -35,14 +41,14 @@ export interface Source {
   status: 'uploaded' | 'processing' | 'done' | 'failed'; processing_started_at: string | null; error: string | null;
   readability: 'unknown' | 'readable' | 'partial' | 'unreadable';
   identity: 'unchecked' | 'matched' | 'mismatch' | 'confirmed_patient' | 'withheld';
-  mode: Mode; model: string | null; timings: Record<string, number> | null; ocr: OcrPage | null;
+  mode: Mode; model: string | null; provider_info: ProviderInfo | null; timings: Record<string, number> | null; ocr: OcrPage | null;
   doc_type: 'prescription' | 'lab_report' | 'history_note' | 'other' | null; clinic: string | null;
   doc_date: DocDate | null; name_on_doc: string | null; age_on_doc: string | null; id_on_doc: string | null;
   width: number | null; height: number | null;
   question_id: string | null;
   /** The patient's typed words, verbatim (kind 'typed'). */
   typed_text: string | null;
-  transcript_hi: string | null; transcript_en: string | null; translation_by: 'sarvam' | 'claude' | null;
+  transcript_hi: string | null; transcript_en: string | null; translation_by: 'sarvam' | 'claude' | 'whisper' | null;
   duration_ms: number | null; supersedes_id: string | null; created_at: string;
 }
 
@@ -55,7 +61,7 @@ export type FactKind =
 export interface Fact {
   id: string; encounter_id: string; source_id: string; group_key: string | null; kind: FactKind;
   value: string; value_en: string | null; quote: string | null;
-  anchor: { boxes: [number, number, number, number][] } | null; evidence: EvidenceKind;
+  anchor: { boxes: [number, number, number, number][]; precision?: 'word' | 'line' } | null; evidence: EvidenceKind;
   check_state: CheckState; reasons: string[];
   subject: 'patient' | 'other_person' | 'unknown'; assertion: 'present' | 'denied' | 'uncertain';
   temporality: 'current' | 'historical' | 'unknown';
@@ -96,7 +102,7 @@ export interface FieldRef {
 }
 
 export interface BriefLine {
-  id: string; text: string; text_hi?: string; text_en_by?: 'sarvam' | 'claude' | null;
+  id: string; text: string; text_hi?: string; text_en_by?: 'sarvam' | 'claude' | 'whisper' | null;
   refs: SourceRef[]; fields?: FieldRef[];
   /** 'verbatim' = the patient's own words shown as entered, not an interpretation. */
   check: CheckState | 'mixed' | 'verbatim';

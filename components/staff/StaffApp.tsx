@@ -6,7 +6,7 @@ import BriefView from './BriefView';
 import EvidenceDrawer from './EvidenceDrawer';
 import type { Encounter, StaffAlert, StaffRole } from '@/lib/types';
 
-interface Me { name: string; role: StaffRole; actor: string; system: { db: 'supabase' | 'local'; providers: { anthropic: boolean; vision: boolean; sarvam: boolean }; model: string } }
+interface Me { name: string; role: StaffRole; actor: string; system: { db: 'supabase' | 'local'; providers: { ocr: { provider: string; configured: boolean }; extraction: { provider: string; configured: boolean } }; ml_ok: boolean; ollama_ok: boolean } }
 type EncRow = Omit<Encounter, 'token'> & { open_alert: boolean };
 
 export default function StaffApp() {
@@ -65,6 +65,7 @@ function Workspace({ me, onLogout }: { me: Me; onLogout: () => void }) {
   const openSource = useCallback((sourceId: string, factId?: string | null, trigger?: HTMLElement | null) => setDrawer({ sourceId, factId: factId ?? null, trigger: trigger ?? null }), []);
   const closeDrawer = useCallback(() => setDrawer(null), []);
   const p = me.system.providers;
+  const ocrLocal = p.ocr.provider.includes('local');
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -72,8 +73,8 @@ function Workspace({ me, onLogout }: { me: Me; onLogout: () => void }) {
       <header className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line bg-surface px-4 py-2">
         <div className="text-[18px] font-semibold"><span className="text-teal">parchi</span> <span className="font-normal text-ink-2">Staff workspace</span></div>
         {me.system.db === 'local' && <span className="rounded bg-amber-soft px-2 py-0.5 text-[13px] font-semibold text-amber" data-testid="local-db">LOCAL DEV DATABASE</span>}
-        <span className="text-[13px] text-ink-2" data-testid="providers">
-          OCR {p.vision ? '✓' : 'not configured'} · Claude {p.anthropic ? `✓ ${me.system.model}` : 'not configured'} · Speech {p.sarvam ? '✓' : 'not configured'}
+        <span className="text-[13px] text-ink-2" data-testid="providers" title="Status when this page loaded">
+          OCR: {p.ocr.provider}{ocrLocal ? (me.system.ml_ok ? ' ✓' : ' · not running') : p.ocr.configured ? ' ✓' : ' · not configured'} · Extraction: {p.extraction.provider}{p.extraction.provider.includes('Ollama') ? (me.system.ollama_ok ? ' ✓' : ' · not running') : p.extraction.configured ? ' ✓' : ' · not configured'}
         </span>
         {sel && (
           <div className="flex items-center gap-1 text-[13px]" aria-label="Processing mode for new uploads">

@@ -11,7 +11,8 @@
     "test": "vitest run",
     "db:migrate": "tsx --env-file-if-exists=.env.local scripts/migrate.ts",
     "test:gate": "tsx --env-file-if-exists=.env.local tests/e2e/gate.ts",
-    "seed:fixtures": "tsx --env-file-if-exists=.env.local scripts/seed-fixture-replays.ts"
+    "seed:fixtures": "tsx --env-file-if-exists=.env.local scripts/seed-fixture-replays.ts",
+    "test:live": "tsx --env-file-if-exists=.env.local tests/live/live-docs.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",

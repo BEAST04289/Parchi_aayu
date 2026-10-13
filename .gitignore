@@ -44,3 +44,7 @@ next-env.d.ts
 # local dev database (PGlite) and test artefacts
 /.data/
 /test-results/
+
+# local ML service environment and logs
+/services/ml/.venv/
+/services/ml/pip.log

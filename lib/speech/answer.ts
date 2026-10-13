@@ -1,14 +1,14 @@
 import 'server-only';
 import { db } from '../db';
 import { getSource } from '../repo';
-import { extractTranscript } from '../pipeline/extract';
+import { extractAnswer } from './extract-local';
 import { ProviderError } from '../pipeline/errors';
 import { quoteFoundIn } from '../verify/normalize';
 import { candidateText } from '../data';
 
 /**
  * Extracts atomic facts from a typed answer (or, later, a transcript). Every quote must be found in
- * the stored text; otherwise the fact is pending_check. Without ANTHROPIC_API_KEY nothing is
+ * the stored text; otherwise the fact is pending_check. Without a reachable local model nothing is
  * extracted and the brief shows the patient's verbatim words only. When an answer is corrected, the
  * brief ignores facts from the replaced answer (buildBrief); those rows stay untouched in history.
  */
@@ -26,7 +26,7 @@ export async function processAnswerText(sourceId: string): Promise<void> {
   }
   let items;
   try {
-    items = (await extractTranscript(text, questionContext)).items;
+    items = (await extractAnswer(text, questionContext)).items;
   } catch (e) {
     if (!(e instanceof ProviderError && e.kind === 'config')) console.error('[processAnswerText]', (e as Error).message);
     return; // verbatim text stays visible; nothing invented

@@ -5,13 +5,15 @@ import { api, timeHM } from '@/lib/client';
 import { CheckTag } from './ui';
 import type { CheckState } from '@/lib/types';
 
-interface EvFact { id: string; kind: string; value: string; value_en: string | null; quote: string | null; anchor: { boxes: [number, number, number, number][] } | null; evidence: string; check_state: CheckState; reasons: string[]; created_by: string; created_at: string; supersedes_id: string | null; superseded_by: string | null }
+interface Step { provider: string; model: string; mode: string; ms: number; inference_ms?: number; cold?: boolean; error?: string }
+interface EvFact { id: string; kind: string; value: string; value_en: string | null; quote: string | null; anchor: { boxes: [number, number, number, number][]; precision?: 'word' | 'line' } | null; evidence: string; check_state: CheckState; reasons: string[]; created_by: string; created_at: string; supersedes_id: string | null; superseded_by: string | null }
 interface Evidence {
   source: {
     id: string; kind: 'page' | 'clip' | 'typed'; label: string; mime: string | null; status: string; error: string | null; mode: string; model: string | null;
     doc_type: string | null; clinic: string | null; date_label: string | null; doc_date_raw: string | null; identity: string; name_on_doc: string | null; readability: string;
     width: number | null; height: number | null; typed_text: string | null; transcript_hi: string | null; transcript_en: string | null; translation_by: string | null;
     created_at: string; has_file: boolean; file_url: string | null;
+    provider_info: { ocr?: Step; extract?: Step; extract_fallback_from?: Step } | null; highlight: 'line' | 'word';
   };
   facts: EvFact[];
   history: { id: string; label: string; kind: string; typed_text: string | null; transcript_hi: string | null; created_at: string }[];
@@ -81,16 +83,21 @@ export default function EvidenceDrawer({ sourceId, factId, onClose, returnFocus 
                   </div>
                 </div>
               ) : <p className="text-ink-2">The original file is not stored.</p>}
-              {fact && boxes.length === 0 && <p className="mt-2 rounded bg-page p-2 text-[14px] text-ink-2" data-testid="page-level">Page-level evidence: no validated text position for this reading.</p>}
+              {fact && boxes.length === 0 && <p className="mt-2 rounded bg-amber-soft p-2 text-[14px] text-amber" data-testid="page-level">Page-level evidence — needs source check: no validated text position for this reading.</p>}
+              {fact && boxes.length > 0 && <p className="mt-2 text-[13px] text-ink-2" data-testid="ocr-highlight">{fact.anchor?.precision === 'word' ? 'Word-level highlight: OCR word positions for this value.' : 'Line-level highlight: the OCR text containing this value (its exact word position could not be isolated).'}</p>}
+              {ev.source.provider_info && <ProviderNote info={ev.source.provider_info} />}
               {ev.source.status === 'failed' && <p className="mt-3 rounded bg-amber-soft p-3 text-amber">Not processed: {ev.source.error}</p>}
             </>
           )}
           {ev && ev.source.kind !== 'page' && (
             <div className="space-y-3">
               <div className="rounded border border-line p-3">
-                <div className="mb-1 text-[13px] font-medium text-ink-2">{ev.source.kind === 'typed' ? 'Typed by the patient (verbatim)' : 'Transcript (original language)'}</div>
+                {ev.source.kind === 'clip' && ev.source.file_url && (
+                  <audio controls preload="metadata" src={ev.source.file_url} className="mb-2 w-full" data-testid="clip-audio" onPlay={(e) => document.querySelectorAll('audio').forEach((a) => { if (a !== e.currentTarget) a.pause(); })} />
+                )}
+                <div className="mb-1 text-[13px] font-medium text-ink-2">{ev.source.kind === 'typed' ? 'Typed by the patient (verbatim)' : 'Transcript (original language, local Whisper)'}</div>
                 <p className="deva text-[18px] leading-relaxed" lang="hi">{ev.source.typed_text ?? ev.source.transcript_hi}</p>
-                {ev.source.transcript_en && <p className="mt-2 text-[15px] text-ink-2">{ev.source.transcript_en} <span className="text-[12px]">({ev.source.translation_by === 'sarvam' ? 'Sarvam translation' : 'AI translation'})</span></p>}
+                {ev.source.transcript_en && <p className="mt-2 text-[15px] text-ink-2">{ev.source.transcript_en} <span className="text-[12px]">({ev.source.translation_by === 'sarvam' ? 'Sarvam translation' : ev.source.translation_by === 'whisper' ? 'Whisper translation (local), may be inexact' : 'AI translation'})</span></p>}
               </div>
               {ev.history.length > 0 && (
                 <div className="rounded border border-line p-3">
@@ -124,6 +131,18 @@ export default function EvidenceDrawer({ sourceId, factId, onClose, returnFocus 
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ProviderNote({ info }: { info: NonNullable<Evidence['source']['provider_info']> }) {
+  const fmt = (s?: Step) => (s ? `${s.provider} · ${s.model} · ${s.mode} · ${(s.ms / 1000).toFixed(1)} s${s.cold ? ' (cold start)' : ''}` : null);
+  return (
+    <div className="mt-2 rounded border border-line p-2 text-[12px] text-ink-2" data-testid="provider-note">
+      {info.ocr && <div>OCR: {fmt(info.ocr)}</div>}
+      {info.extract && <div>Extraction: {fmt(info.extract)}</div>}
+      {info.extract_fallback_from && <div className="text-amber">Fell back from {info.extract_fallback_from.provider} ({info.extract_fallback_from.model}): {info.extract_fallback_from.error}</div>}
+      <div>A match between OCR and the model shows where a reading came from; it does not prove it is clinically correct.</div>
     </div>
   );
 }
