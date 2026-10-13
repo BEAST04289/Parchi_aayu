@@ -17,7 +17,8 @@ export async function listEncounters(): Promise<(Encounter & { open_alert: boole
 
 export async function createEncounter(input: { patient_name: string; patient_age: number | null; patient_ref: string | null }): Promise<Encounter> {
   const d = await db();
-  const [{ n }] = await d.query<{ n: number }>('select count(*)::int as n from encounters');
+  // Highest existing number + 1 (not the row count), so a deleted encounter never makes an alias repeat.
+  const [{ n }] = await d.query<{ n: number }>(`select coalesce(max(substring(alias from 2)::int), 0)::int as n from encounters where alias ~ '^D[0-9]+$'`);
   const rows = await d.query<Encounter>(
     `insert into encounters (token, alias, patient_name, patient_age, patient_ref) values ($1,$2,$3,$4,$5) returning *`,
     [newKioskToken(), `D${n + 1}`, input.patient_name, input.patient_age, input.patient_ref],
