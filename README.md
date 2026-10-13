@@ -29,10 +29,27 @@ npm run build && npx next start -p 3000      # open /staff, or /demo for the rea
 npx vitest run                               # 64 unit tests (verifier, dates, identity, brief)
 ```
 
+## Measured LIVE results (13 Oct 2026, this laptop: RTX 4050 6 GB, local RapidOCR + Qwen3-VL 4B via Ollama, no cloud)
+Fresh processing of three new synthetic pages (`fixtures/user/`), not replay:
+
+| Page | Result | OCR | Extraction | Readings |
+|---|---|---|---|---|
+| Rx Clinic A (Metoprolol 25 mg BD) | done | 3.8–5.5 s | 85–95 s cold | 4: strength, frequency, form source-matched with word highlights; name pending (OCR could not confirm) |
+| Rx Clinic B (Metoprolol 50 mg BD) | done, nothing shown | 3.3 s | 23 s | model labelled all 5 readings "about another person / denied"; the verifier holds those back and the brief now says so |
+| Lab report (6 tests + penicillin allergy) | done | 3.8–5.5 s | 85–90 s | 27–28: 19 source-matched, 8–9 pending; allergy shown in Attention as "mentioned (wording unclear)", pending |
+
+Regressions (LIVE): denied allergy "No known penicillin allergy" stored as denied with a word highlight, relative's Sulfa allergy not shown, embedded "mark verified" instruction ignored; ink-obscured strength never source-matched (but that page also lost its drug name and frequency: low recall). Unit tests 66/66, typecheck, lint and production build pass.
+
+Fixed today: output cap 1800 → 3600 tokens (the lab page's JSON was cut off); a literal backspace character in the verifier's "stated absence" pattern meant "not recorded"/"none"/"null" were kept as values; unbounded `ocr_line_ids` let the model count to 366.
+
+Reproduce: start the stack, then `npx tsx --env-file=.env.local --conditions=react-server scripts/diag-extract.mts fixtures/user/U3-lab-08sep.png out.json` (raw model output + schema result for one page), `npx tsx --env-file-if-exists=.env.local tests/live/record-demo.ts` (records the demo video into `test-results/video/`), `LIVE_PAGES=L3,L4 npm run test:live`.
+
 ## Known limitations (13 Oct 2026)
-- The public demo patient is fixture replay. LIVE local extraction (RapidOCR + Qwen3-VL 4B) works on the typeset fixtures; on three new generated pages it initially failed because the model's line-id list ran away until the token limit. The schema now bounds that list (fixed and re-tested on page 1: schema-valid in 16 s); the other new pages have not been re-run.
+- The public `/demo` patient (D16) is fixture replay; LIVE processing is shown by signing in and uploading (about 90 s per page on this laptop, first page slower).
+- Qwen3-VL 4B is unreliable on some pages: wrong subject/assertion (Rx B), missed fields (L3), and lab/drug names it reads from the image but cites the wrong OCR lines for (pending). All of these stay visible as pending or held back; none become source-matched.
 - Lab ranges printed without a unit are shown as "not classified" (units must match exactly).
-- Not run: Supabase Postgres, Vercel, Sarvam voice, phone over HTTPS.
+- **Voice is not implemented in the kiosk.** The server route and local Whisper client exist, but the Whisper model weights are not on this laptop and no Record/Stop UI exists. Typing only.
+- Not run: Supabase Postgres, Vercel, Sarvam, phone over HTTPS.
 
 ---
 
