@@ -56,9 +56,11 @@ export function buildBrief(b: Bundle, now: Date = new Date()): Brief {
     if ((s.kind !== 'typed' && s.kind !== 'clip') || supersededSources.has(s.id)) continue;
     const words = s.kind === 'typed' ? s.typed_text : s.transcript_hi;
     if (!words) continue;
+    const q = s.question_id ? b.questions.find((x) => x.id === s.question_id) : undefined;
     reason.push({
       id: `ans-${s.id}`, text: s.transcript_en ?? words, text_hi: words, text_en_by: s.transcript_en ? s.translation_by : null,
       refs: [ref(s.id)], check: 'verbatim', origin: 'patient_reported',
+      ...(q ? { asked: candidateText(q.candidate_id)?.en ?? q.candidate_id } : {}),
     });
   }
   for (const f of facts.filter((x) => ['visit_reason', 'complaint', 'onset', 'duration', 'patient_concern'].includes(x.kind))) {
@@ -185,6 +187,8 @@ export function buildBrief(b: Bundle, now: Date = new Date()): Brief {
   for (const s of b.sources.filter((x) => x.kind === 'page')) {
     if (s.status === 'failed') open.push({ id: `failed-${s.id}`, text: `${s.label} was not processed: ${s.error ?? 'unknown error'} The original page is stored.`, refs: [ref(s.id)], check: 'pending_check', origin: 'rule' });
     else if (s.status === 'done' && s.readability === 'unreadable') open.push({ id: `retake-${s.id}`, text: `${s.label} could not be read. Ask for a clearer photo.`, refs: [ref(s.id)], check: 'pending_check', origin: 'rule' });
+    else if (s.status === 'done' && !withheld.has(s.id) && !b.facts.some((f) => f.source_id === s.id))
+      open.push({ id: `nofacts-${s.id}`, text: `${s.label}: no structured facts extracted. Review the original page; this does not mean it has no medicines or allergies.`, refs: [ref(s.id)], check: 'pending_check', origin: 'rule' });
   }
   for (const q of b.questions.filter((x) => x.state === 'unknown' || x.state === 'skipped')) {
     const t = candidateText(q.candidate_id);

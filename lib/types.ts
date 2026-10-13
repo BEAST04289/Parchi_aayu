@@ -103,6 +103,8 @@ export interface FieldRef {
 
 export interface BriefLine {
   id: string; text: string; text_hi?: string; text_en_by?: 'sarvam' | 'claude' | 'whisper' | null;
+  /** For a follow-up answer: the question it answers (English), so the answer is read in context. */
+  asked?: string;
   refs: SourceRef[]; fields?: FieldRef[];
   /** 'verbatim' = the patient's own words shown as entered, not an interpretation. */
   check: CheckState | 'mixed' | 'verbatim';

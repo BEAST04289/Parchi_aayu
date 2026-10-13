@@ -4,7 +4,7 @@ import clsx from 'clsx';
 import { api, ApiError, timeHM } from '@/lib/client';
 
 type Lang = 'hi' | 'en';
-type Step = 'start' | 'tell' | 'papers' | 'check' | 'done';
+type Step = 'start' | 'tell' | 'papers' | 'questions' | 'check' | 'done';
 interface KState {
   encounter: { alias: string; patient_name: string; language: Lang; status: 'intake' | 'paused_urgent' | 'ready'; intake_started: boolean; intake_completed: boolean };
   pages: { id: string; label: string; status: string; readability: string; identity: string; error: string | null; seq: number }[];
@@ -114,7 +114,7 @@ export default function Kiosk({ token }: { token: string }) {
   if (!st) return <main className="mx-auto max-w-[680px] p-6 text-[20px] deva">{netDown ? T.offline.hi : 'लोड हो रहा है…'}</main>;
 
   const paused = st.encounter.status === 'paused_urgent' || !!st.open_alert;
-  const stageIdx = step === 'tell' ? 0 : step === 'papers' ? 1 : step === 'check' ? 2 : -1;
+  const stageIdx = step === 'tell' ? 0 : step === 'papers' || step === 'questions' ? 1 : step === 'check' ? 2 : -1;
 
   return (
     <div className={clsx('min-h-screen pb-28', lang === 'hi' && 'deva')} lang={lang}>
@@ -149,7 +149,9 @@ export default function Kiosk({ token }: { token: string }) {
         ) : step === 'tell' ? (
           <Tell t={t} base={base} answers={st.answers} onNext={() => go('papers')} refresh={refresh} />
         ) : step === 'papers' ? (
-          <Papers t={t} lang={lang} base={base} pages={st.pages} onNext={() => go('check')} refresh={refresh} />
+          <Papers t={t} lang={lang} base={base} pages={st.pages} onNext={() => go('questions')} refresh={refresh} />
+        ) : step === 'questions' ? (
+          <Questions lang={lang} base={base} onDone={() => go('check')} refresh={refresh} />
         ) : step === 'check' ? (
           <Check t={t} lang={lang} base={base} st={st} onEdit={() => go('tell')} onPapers={() => go('papers')} onDone={() => go('done')} />
         ) : (
@@ -310,6 +312,74 @@ function Papers({ t, lang, base, pages, onNext, refresh }: { t: (k: keyof typeof
       </ul>
       <BottomBar>
         <button onClick={onNext} className="min-h-[56px] w-full rounded-[12px] bg-teal text-[20px] font-semibold text-white" data-testid="papers-next">{pages.length || local.length ? t('next') : t('skip')}</button>
+      </BottomBar>
+    </section>
+  );
+}
+
+interface QView { id: string; candidate_id: string; hi: string; en: string; why_en: string | null; details: string | null }
+
+/** One gap-driven follow-up at a time (deterministic server-side selection). Answer, पता नहीं or छोड़ें. */
+function Questions({ lang, base, onDone, refresh }: { lang: Lang; base: string; onDone: () => void; refresh: () => Promise<unknown> }) {
+  const [q, setQ] = useState<QView | null>(null);
+  const [waiting, setWaiting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const next = useCallback(async () => {
+    setLoading(true); setErr(null);
+    try {
+      const r = await api<{ question?: QView; done: boolean; waiting: boolean }>(`${base}/questions/next`, { method: 'POST' });
+      setQ(r.question ?? null); setWaiting(r.waiting);
+      if (r.done && !r.waiting) onDone();
+    } catch (e) { setErr((e as Error).message); }
+    setLoading(false);
+  }, [base, onDone]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    next();
+  }, [next]);
+  useEffect(() => {
+    if (q || !waiting) return;
+    const iv = setInterval(next, 3000); // papers still being read: check again for document-based questions
+    return () => clearInterval(iv);
+  }, [q, waiting, next]);
+  const respond = async (state: 'unknown' | 'skipped') => {
+    if (!q) return;
+    setBusy(true);
+    try { await api(`${base}/questions/${q.id}/respond`, { method: 'POST', json: { state } }); setQ(null); await next(); } catch (e) { setErr((e as Error).message); }
+    setBusy(false);
+  };
+  const answer = async () => {
+    if (!q || !text.trim()) return;
+    setBusy(true);
+    try { await api(`${base}/answers`, { method: 'POST', json: { text, question_id: q.id } }); setText(''); setQ(null); await refresh(); await next(); } catch (e) { setErr((e as Error).message); }
+    setBusy(false);
+  };
+  if (loading && !q) return <p className="text-ink-2">{lang === 'hi' ? 'लोड हो रहा है…' : 'Loading…'}</p>;
+  if (!q) return (
+    <section className="grid gap-3" data-testid="questions-waiting">
+      <p className="text-[22px]">{lang === 'hi' ? 'आपके पर्चे पढ़े जा रहे हैं। उनके बारे में एक सवाल आ सकता है।' : 'Your papers are being read. There may be a question about them.'}</p>
+      {err && <p className="rounded-[12px] bg-red-soft p-3 text-red" role="alert">{err}</p>}
+      <BottomBar><button onClick={onDone} className="min-h-[56px] w-full rounded-[12px] border-2 border-line bg-surface text-[20px]">{lang === 'hi' ? 'आगे बढ़ें' : 'Continue'}</button></BottomBar>
+    </section>
+  );
+  return (
+    <section className="grid gap-3" data-testid="question">
+      <h1 className="text-[28px] font-semibold leading-tight" data-testid="question-text">{lang === 'hi' ? q.hi : q.en}</h1>
+      {lang === 'hi' && <p className="text-[16px] text-ink-2">{q.en}</p>}
+      {q.details && <p className="rounded-[12px] bg-teal-soft p-3 text-[18px]" data-testid="question-details">{q.details}</p>}
+      {q.why_en && <p className="text-[14px] text-ink-2">{lang === 'hi' ? 'क्यों पूछा: ' : 'Why we ask: '}{q.why_en}</p>}
+      <label className="sr-only" htmlFor="qanswer">{q.en}</label>
+      <textarea id="qanswer" value={text} onChange={(e) => setText(e.target.value)} rows={3} className="w-full rounded-[12px] border-2 border-line bg-surface p-3 text-[20px]" data-testid="question-input" placeholder={lang === 'hi' ? 'अपना जवाब लिखें…' : 'Type your answer…'} />
+      {err && <p className="rounded-[12px] bg-red-soft p-3 text-red" role="alert">{err}</p>}
+      <BottomBar>
+        <div className="grid grid-cols-3 gap-2">
+          <button disabled={busy} onClick={() => respond('unknown')} className="min-h-[56px] rounded-[12px] border-2 border-line bg-surface text-[18px]" data-testid="q-unknown">{lang === 'hi' ? 'पता नहीं' : "Don't know"}</button>
+          <button disabled={busy} onClick={() => respond('skipped')} className="min-h-[56px] rounded-[12px] border-2 border-line bg-surface text-[18px]" data-testid="q-skip">{lang === 'hi' ? 'छोड़ें' : 'Skip'}</button>
+          <button disabled={busy || !text.trim()} onClick={answer} className="min-h-[56px] rounded-[12px] bg-teal text-[18px] font-semibold text-white disabled:opacity-50" data-testid="q-send">{lang === 'hi' ? 'भेजें' : 'Send'}</button>
+        </div>
       </BottomBar>
     </section>
   );

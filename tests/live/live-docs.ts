@@ -77,7 +77,8 @@ async function main() {
     let page: { id: string; label: string; status: string; error: string | null } | undefined;
     let tUploaded = 0;
     while (Date.now() - t0 < 15 * 60_000) {
-      const s = await http('GET', `/api/kiosk/${tok}/state`);
+      const s = await http('GET', `/api/kiosk/${tok}/state`).catch(() => null);
+      if (!s) { await sleep(500); continue; }
       const list = s.data.pages as { id: string; label: string; status: string; error: string | null }[];
       if (list.length > seen) {
         if (!tUploaded) tUploaded = Date.now();
