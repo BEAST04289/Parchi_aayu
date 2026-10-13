@@ -136,3 +136,9 @@ Screenshots (actual running screens) are in `test-results/screens/` (gitignored)
 - Claude extraction on handwritten p1: fields ___, quote matches ___. Latency at effort low ___ s, medium ___ s.
 - Next.js `after()`: works locally under `next start` (P1). Vercel: ___.
 - Phone + deployed HTTPS: mic permission ___, MediaRecorder MIME ___.
+
+## 13 Oct ~16:45 IST: public demo, allergy guard, extraction fix
+- **Public demo:** `https://internet-border-musical-meditation.trycloudflare.com/demo` (Cloudflare Quick Tunnel to `next start` on this laptop; the hostname changes if the tunnel restarts). Read-only, no login, scoped by a signed `parchi_demo` cookie to encounter D16 (`DEMO_ENCOUNTER_ALIAS`). Checked in fresh Edge contexts via the public URL at 1366×768 and 390×844: 6/6 thumbnails load, p4 drawer image + allergy reading load, 0 localhost requests, 0 errors, no overflow. With the demo cookie: D16 brief 200; D14 brief 401; D14 file 401; encounter list 401; doctor-review POST 401; no cookie 401. `/staff` still asks for the passcode.
+- **D16 is fixture replay** (hand-authored readings, page-level evidence, labelled). D15 (duplicate, wrongly answered "पता नहीं") was deleted. Do not show D12: its page-4 allergy was stored as a documented negative; the brief now shows it in Attention as "mentioned (wording unclear)".
+- **Root cause of the LIVE failures on the new pages (D17 p1–p3):** Qwen3-VL 4B ran away in `items[].ocr_line_ids` (0…366) until `num_predict` 1800 → `done_reason: length` → truncated JSON. Fix: `ocr_line_ids` `maxItems 3`. Re-run on U1 via `scripts/diag-extract.mts`: `done_reason: stop`, 388 tokens, 16 s, schema-valid, 4 items. **Not yet done:** retry D17 p1–p3 through the app, regression run on a proven fixture.
+- Commands: `npx vitest run` 64/64; `npm run typecheck` pass; eslint clean; `npm run build` pass. The rehearsal script was not rerun.
