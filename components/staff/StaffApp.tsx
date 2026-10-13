@@ -9,16 +9,16 @@ import type { Encounter, StaffAlert, StaffRole } from '@/lib/types';
 interface Me { name: string; role: StaffRole; actor: string; system: { db: 'supabase' | 'local'; providers: { ocr: { provider: string; configured: boolean }; extraction: { provider: string; configured: boolean } }; ml_ok: boolean; ollama_ok: boolean } }
 type EncRow = Omit<Encounter, 'token'> & { open_alert: boolean };
 
-export default function StaffApp() {
+export default function StaffApp({ demoPasscode = null }: { demoPasscode?: string | null }) {
   const [me, setMe] = useState<Me | null | 'out'>(null);
   const load = useCallback(() => api<Me>('/api/staff/me').then(setMe).catch(() => setMe('out')), []);
   useEffect(() => { load(); }, [load]);
   if (me === null) return <div className="p-6 text-ink-2">Loading…</div>;
-  if (me === 'out') return <Login onDone={load} />;
+  if (me === 'out') return <Login onDone={load} demoPasscode={demoPasscode} />;
   return <Workspace me={me} onLogout={async () => { await api('/api/staff/logout', { method: 'POST' }).catch(() => {}); setMe('out'); }} />;
 }
 
-function Login({ onDone }: { onDone: () => void }) {
+function Login({ onDone, demoPasscode }: { onDone: () => void; demoPasscode: string | null }) {
   const [passcode, setPasscode] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState<StaffRole>('doctor');
@@ -27,6 +27,12 @@ function Login({ onDone }: { onDone: () => void }) {
     <main className="mx-auto mt-16 max-w-[420px] rounded-[10px] border border-line bg-surface p-6">
       <div className="text-[22px] font-semibold"><span className="text-teal">parchi</span> · Staff workspace</div>
       <p className="mt-1 text-[14px] text-ink-2">Synthetic demo. No real patient data.</p>
+      {demoPasscode && (
+        <div className="mt-3 rounded-md border border-teal bg-teal-soft p-3 text-[14px]" data-testid="demo-passcode">
+          <div><strong>Judges:</strong> the demo staff passcode is <code className="select-all rounded bg-surface px-1.5 py-0.5 font-mono text-[15px]">{demoPasscode}</code></div>
+          <button type="button" onClick={() => { setPasscode(demoPasscode); if (!name.trim()) setName('Judge'); }} className="mt-2 rounded-md border border-teal bg-surface px-3 py-1.5 font-medium text-teal hover:bg-page">Fill in for me</button>
+        </div>
+      )}
       <form className="mt-4 grid gap-3" onSubmit={async (e) => {
         e.preventDefault(); setErr(null);
         unlockAudio();
@@ -56,6 +62,7 @@ function Workspace({ me, onLogout }: { me: Me; onLogout: () => void }) {
   const [encs, setEncs] = useState<EncRow[]>([]);
   const [sel, setSel] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [side, setSide] = useState(false);
   const [drawer, setDrawer] = useState<{ sourceId: string; factId: string | null; trigger: HTMLElement | null } | null>(null);
 
   const loadEncs = useCallback(() => api<{ encounters: EncRow[] }>('/api/encounters').then((r) => setEncs(r.encounters)).catch(() => {}), []);
@@ -110,7 +117,19 @@ function Workspace({ me, onLogout }: { me: Me; onLogout: () => void }) {
         </aside>
         <main className="min-w-0 flex-1">
           {creating ? <CreateEncounter onCreated={(id) => { loadEncs(); setSel(id); }} onClose={() => setCreating(false)} />
-            : sel ? <BriefView key={sel} encounterId={sel} role={me.role} onOpen={openSource} />
+            : sel ? (
+              <div className="flex min-w-0">
+                <div className="min-w-0 flex-1">
+                  <div className="mx-auto flex max-w-[1100px] justify-end px-5 pt-3">
+                    <button onClick={() => setSide((v) => !v)} className="rounded-md border border-teal px-3 py-1.5 text-[14px] font-medium text-teal hover:bg-teal-soft" data-testid="toggle-kiosk">
+                      {side ? 'Hide patient kiosk' : 'Show patient kiosk side-by-side'}
+                    </button>
+                  </div>
+                  <BriefView key={sel} encounterId={sel} role={me.role} onOpen={openSource} />
+                </div>
+                {side && <KioskSide key={sel} encounterId={sel} />}
+              </div>
+            )
               : <div className="p-8 text-ink-2"><p className="text-[18px] text-ink">No encounter selected.</p><p className="mt-1">Create an encounter, then open its kiosk link or QR code on the patient&apos;s device. The brief fills in as the patient types and uploads papers.</p></div>}
         </main>
       </div>
@@ -216,5 +235,24 @@ function AlertBar({ onOpenEncounter }: { onOpenEncounter: (id: string) => void }
         </div>
       ))}
     </div>
+  );
+}
+
+/** The patient's kiosk for this encounter, live beside the brief (same origin, real kiosk, real actions). */
+function KioskSide({ encounterId }: { encounterId: string }) {
+  const [path, setPath] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    api<{ kiosk_url: string }>(`/api/encounters/${encounterId}/kiosk-link`).then((r) => setPath(new URL(r.kiosk_url).pathname)).catch((e) => setErr((e as Error).message));
+  }, [encounterId]);
+  return (
+    <aside className="sticky top-0 flex h-screen w-[410px] shrink-0 flex-col border-l border-line bg-page p-2" aria-label="Patient kiosk" data-testid="kiosk-side">
+      <div className="mb-1 flex items-center justify-between text-[13px] text-ink-2">
+        <span>Patient kiosk (what the patient sees)</span>
+        {path && <a href={path} target="_blank" rel="noopener noreferrer" className="text-teal underline">Open in new tab</a>}
+      </div>
+      {err && <p className="text-red">Kiosk link unavailable: {err}</p>}
+      {path && <iframe src={path} title="Patient kiosk" className="w-[390px] flex-1 rounded border border-line bg-surface" allow="camera; microphone" />}
+    </aside>
   );
 }
