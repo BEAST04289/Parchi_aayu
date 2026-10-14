@@ -4,7 +4,7 @@ Parchi turns a patient's own words (Hindi-first kiosk) and their scattered presc
 
 ## Live demo (no login)
 
-**https://irrigation-village-likewise-theft.trycloudflare.com/demo** (temporary Cloudflare Quick Tunnel to the team laptop; works while the laptop and tunnel are running.)
+**https://cheaper-tray-berlin-ethnic.trycloudflare.com/demo** (temporary Cloudflare Quick Tunnel to the team laptop; works while the laptop and tunnel are running.)
 
 What a judge can do there, read-only:
 - See Ramesh, 52 (fictional): an **Attention** strip (penicillin allergy recorded; amoxicillin, a penicillin, prescribed 10 Sep), reason for visit in the patient's own Hindi words, a medicine table with a documented strength change (Metoprolol 25 mg → 50 mg), labs against the report's own range, a dated history and the open questions.
